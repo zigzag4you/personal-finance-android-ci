@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions: {}
+    # Android Emulator 37+ requires explicit opt-in when the runner disables KVM.
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
     steps:
       - name: Verify private source credential is configured
         shell: bash
