@@ -67,12 +67,7 @@ jobs:
             set -eu
             adb devices
             adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
-            bash ./gradlew \
-              :app:testDebugUnitTest \
-              :app:lintDebug \
-              :app:assembleDebug \
-              :app:connectedDebugAndroidTest \
-              --no-daemon --no-build-cache --stacktrace
+            bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace
 
       - name: Remove private checkout and source-bearing build state
         if: always()
