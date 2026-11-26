@@ -24,12 +24,8 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - version: 1
-            source_sha: 61c2cf0ebbe99071c0cc16ad0dda6510a81b515f
           - version: 2
             source_sha: 1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4
-          - version: 3
-            source_sha: 016232db8bb587efd204a35ebb611c62e9eb65d9
 
     steps:
       - name: Verify private source credential is configured
@@ -56,6 +52,39 @@ jobs:
           submodules: false
           lfs: false
           clean: true
+
+      - name: Add temporary v2-only DAO compilation shim
+        if: matrix.version == 2
+        shell: bash
+        working-directory: private-source
+        run: |
+          set +x
+          set -euo pipefail
+          mkdir -p app/src/main/java/com/zigzag4you/personalfinance/persistence/room/dao
+          cat > app/src/main/java/com/zigzag4you/personalfinance/persistence/room/dao/LegacyImportDao.kt <<'KOTLIN'
+          package com.zigzag4you.personalfinance.persistence.room.dao
+
+          import androidx.room3.Dao
+          import androidx.room3.Insert
+          import androidx.room3.OnConflictStrategy
+          import androidx.room3.Query
+          import com.zigzag4you.personalfinance.persistence.room.entity.LegacyImportArchiveEntity
+
+          /**
+           * Temporary CI-only compile shim for the v2 historical source snapshot.
+           * The v2 commit references this DAO from FinanceDatabase but does not contain
+           * its source file. This shim is never committed and does not alter @Database
+           * entities, their fields, indices, foreign keys, or the exported schema.
+           */
+          @Dao
+          abstract class LegacyImportDao {
+              @Query("SELECT * FROM legacy_import_archives WHERE sourceFingerprint = :fingerprint LIMIT 1")
+              abstract suspend fun findByFingerprint(fingerprint: String): LegacyImportArchiveEntity?
+
+              @Insert(onConflict = OnConflictStrategy.ABORT)
+              abstract suspend fun insert(archive: LegacyImportArchiveEntity)
+          }
+          KOTLIN
 
       - name: Verify toolchain and generate Room schema
         shell: bash
@@ -85,7 +114,11 @@ jobs:
 
           mkdir -p "$RUNNER_TEMP/room-schema-output"
           if ! bash ./gradlew :app:kspDebugKotlin --no-daemon --no-build-cache > "$RUNNER_TEMP/room-ksp.log" 2>&1; then
-            echo "::error::Room KSP schema generation failed for source revision $EXPECTED_SOURCE_SHA. Detailed build output was deliberately not printed."
+            echo "::error::Room KSP schema generation failed for source revision $EXPECTED_SOURCE_SHA."
+            # Emit only compiler/task diagnostics; redact private workspace paths and never print source lines.
+            grep -E '(^e: file://|^w: file://|^\* What went wrong:|^Execution failed for task|^FAILURE: Build failed|^Caused by:)' "$RUNNER_TEMP/room-ksp.log" \
+              | sed -E 's#file:///home/runner/work/[^:]+#<private-source-file>#g' \
+              | head -n 20 || true
             exit 1
           fi
 
