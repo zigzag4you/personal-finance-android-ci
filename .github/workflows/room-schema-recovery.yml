@@ -1,0 +1,129 @@
+name: Generate historical Room schemas
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: room-schema-recovery
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: Room v${{ matrix.version }} schema
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions: {}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - version: 1
+            source_sha: 61c2cf0ebbe99071c0cc16ad0dda6510a81b515f
+          - version: 2
+            source_sha: 1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4
+          - version: 3
+            source_sha: 016232db8bb587efd204a35ebb611c62e9eb65d9
+
+    steps:
+      - name: Verify private source credential is configured
+        shell: bash
+        env:
+          PRIVATE_SOURCE_TOKEN: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
+        run: |
+          set +x
+          if [ -z "${PRIVATE_SOURCE_TOKEN}" ]; then
+            echo "::error::PRIVATE_REPO_READ_TOKEN is missing or unavailable to this workflow."
+            exit 1
+          fi
+          unset PRIVATE_SOURCE_TOKEN
+          echo "Private-source credential is present (value intentionally not inspected or printed)."
+
+      - name: Checkout exact historical private source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: zigzag4you/personal-finance-android
+          ref: ${{ matrix.source_sha }}
+          token: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
+          path: private-source
+          persist-credentials: false
+          submodules: false
+          lfs: false
+          clean: true
+
+      - name: Verify toolchain and generate Room schema
+        shell: bash
+        working-directory: private-source
+        env:
+          EXPECTED_VERSION: ${{ matrix.version }}
+          EXPECTED_SOURCE_SHA: ${{ matrix.source_sha }}
+        run: |
+          set +x
+          set -euo pipefail
+
+          JAVA_MAJOR="$(java -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p')"
+          if [ "$JAVA_MAJOR" != "17" ]; then
+            echo "::error::Expected Java 17; refusing to generate a historical schema with a different JDK."
+            exit 1
+          fi
+
+          if [ ! -x ./gradlew ]; then
+            echo "::error::Gradle wrapper script is missing or not executable."
+            exit 1
+          fi
+
+          if [ -z "${ANDROID_HOME:-}" ] && [ -z "${ANDROID_SDK_ROOT:-}" ]; then
+            echo "::error::Android SDK is unavailable on this runner."
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/room-schema-output"
+          if ! ./gradlew :app:kspDebugKotlin --no-daemon --no-build-cache > "$RUNNER_TEMP/room-ksp.log" 2>&1; then
+            echo "::error::Room KSP schema generation failed for source revision $EXPECTED_SOURCE_SHA. Detailed build output was deliberately not printed."
+            exit 1
+          fi
+
+          mapfile -t schema_files < <(find app/schemas -type f -name "${EXPECTED_VERSION}.json" -print 2>/dev/null | sort)
+          if [ "${#schema_files[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one generated schema JSON for Room version $EXPECTED_VERSION."
+            exit 1
+          fi
+
+          python3 - "${schema_files[0]}" "$EXPECTED_VERSION" <<'PY'
+          import json, pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          expected = int(sys.argv[2])
+          data = json.loads(path.read_text(encoding="utf-8"))
+          database = data.get("database")
+          if not isinstance(database, dict):
+              raise SystemExit("Generated Room schema has no database object.")
+          if database.get("version") != expected:
+              raise SystemExit("Generated Room schema version does not match the requested historical version.")
+          identity = database.get("identityHash")
+          if not isinstance(identity, str) or not identity.strip():
+              raise SystemExit("Generated Room schema is missing its generated identity hash.")
+          print(f"Verified Room schema version {expected}; generated identity hash is present.")
+          PY
+
+          cp "${schema_files[0]}" "$RUNNER_TEMP/room-schema-output/${EXPECTED_VERSION}.json"
+          test -s "$RUNNER_TEMP/room-schema-output/${EXPECTED_VERSION}.json"
+
+      - name: Remove private checkout and source-bearing build state
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          rm -rf "$GITHUB_WORKSPACE/private-source"
+          rm -rf "$HOME/.gradle/caches" "$HOME/.gradle/daemon" "$HOME/.gradle/native" "$HOME/.gradle/notifications" "$HOME/.gradle/wrapper"
+          rm -f "$RUNNER_TEMP/room-ksp.log"
+
+      - name: Publish only the generated schema JSON
+        if: success()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.2
+        with:
+          name: room-schema-v${{ matrix.version }}
+          path: ${{ runner.temp }}/room-schema-output/${{ matrix.version }}.json
+          if-no-files-found: error
+          retention-days: 1
