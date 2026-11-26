@@ -3,10 +3,6 @@ name: Validate Room database migrations
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/room-migration-validation.yml"
 
 permissions: {}
 
