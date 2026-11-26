@@ -7,9 +7,19 @@ This repository is a **public CI control plane only**. It must never become a mi
 - Private application repository: `zigzag4you/personal-finance-android`
 - Shared project memory for all projects: `zigzag4you/project-continuity`
 
-## Intended operation
+## Room schema recovery workflow
 
-A workflow in this repository will, after explicit security setup, fetch a specific commit from the private source repository at runtime, build and test it, and publish only allowlisted, non-sensitive summaries.
+The manual-only workflow at `.github/workflows/room-schema-recovery.yml` generates the three historical Room schema snapshots from exact, allowlisted private source commits:
+
+| Schema | Source commit |
+|---|---|
+| v1 | `61c2cf0ebbe99071c0cc16ad0dda6510a81b515f` |
+| v2 | `1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4` |
+| v3 | `016232db8bb587efd204a35ebb611c62e9eb65d9` |
+
+It checks out only those fixed revisions, runs the configured Room KSP task, validates the generated version and identity hash, removes the private checkout and Gradle state, then publishes only one allowlisted schema JSON per short-lived artifact (one-day retention).
+
+The workflow has no push, pull-request, schedule, or untrusted-code trigger. It is started manually from the Actions tab. It uses the repository Actions secret `PRIVATE_REPO_READ_TOKEN`; the secret value is never printed or written to the repository.
 
 ## Security invariants
 
@@ -18,11 +28,10 @@ A workflow in this repository will, after explicit security setup, fetch a speci
 - Cross-repository credentials must be read-only and restricted to the single private application repository.
 - Never expose tokens in logs, URLs, shell tracing, caches, artifacts, or job summaries.
 - Never execute untrusted pull-request code while a private-source credential is available.
-- Pin third-party Actions to full commit SHAs.
-- Build outputs and test reports must be reviewed for sensitive content before publication.
+- Third-party Actions are pinned to full commit SHAs.
+- Build output is suppressed; only a non-sensitive success/failure summary is emitted.
+- Only the explicitly allowlisted generated Room schema JSON is uploaded, with one-day retention.
 
-## Status
+## Current verification status
 
-**Not configured.** This repository was confirmed empty before this README was added. No workflow, secret, cross-repository permission, or successful CI run has been configured or verified yet.
-
-Do not add a workflow until the access mechanism and account Actions settings are verified. See the private repository's `docs/CI_SECURITY_BOUNDARY.md` for the full threat model.
+**Workflow committed; execution not yet verified.** GitHub does not expose secret values to repository readers, and the available connector cannot inspect the configured Actions secret. The first manual run safely checks whether `PRIVATE_REPO_READ_TOKEN` is available without revealing it. No workflow run or generated schema artifact is claimed until GitHub reports a completed run.
