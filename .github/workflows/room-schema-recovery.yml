@@ -2,10 +2,6 @@ name: Generate historical Room schemas
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/room-schema-recovery.yml"
 
 permissions: {}
 
@@ -24,8 +20,12 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - version: 1
+            source_sha: 61c2cf0ebbe99071c0cc16ad0dda6510a81b515f
           - version: 2
             source_sha: 1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4
+          - version: 3
+            source_sha: 016232db8bb587efd204a35ebb611c62e9eb65d9
 
     steps:
       - name: Verify private source credential is configured
@@ -141,7 +141,15 @@ jobs:
           identity = database.get("identityHash")
           if not isinstance(identity, str) or not identity.strip():
               raise SystemExit("Generated Room schema is missing its generated identity hash.")
-          print(f"Verified Room schema version {expected}; generated identity hash is present.")
+          expected_tables = {
+              1: {"ledger_accounts", "journal_entries", "journal_lines", "audit_events", "accounting_periods", "accounting_period_audit_events"},
+              2: {"ledger_accounts", "journal_entries", "journal_lines", "audit_events", "accounting_periods", "accounting_period_audit_events", "legacy_import_archives"},
+              3: {"ledger_accounts", "journal_entries", "journal_lines", "audit_events", "accounting_periods", "accounting_period_audit_events", "legacy_import_archives", "legacy_conversion_stages"},
+          }[expected]
+          actual_tables = {entity.get("tableName") for entity in database.get("entities", [])}
+          if actual_tables != expected_tables:
+              raise SystemExit("Generated Room schema entity set does not match the verified historical version.")
+          print(f"Verified Room schema v{expected}: {len(actual_tables)} expected entities and generated identity hash.")
           PY
 
           cp "${schema_files[0]}" "$RUNNER_TEMP/room-schema-output/${EXPECTED_VERSION}.json"
