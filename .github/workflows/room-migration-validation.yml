@@ -45,10 +45,19 @@ jobs:
           lfs: false
           clean: true
 
-      # Google ATD is designed for automated tests and removes much of the
-      # normal device surface area. This migration suite needs Android/Room,
-      # not Play Store or a full interactive phone image.
-      - name: Run full Android verification on Google ATD
+      # Fail fast on the hosted runner before paying the emulator startup cost.
+      # These tasks do not require a running Android device.
+      - name: Run host-side compile, unit tests, lint and APK preflight
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -eu
+          bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --no-build-cache --stacktrace
+
+      # Boot Google ATD only after all host-side gates pass. This suite needs
+      # Android/Room instrumentation, not Play Store or a full interactive phone image.
+      - name: Run Android instrumentation on Google ATD
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 35
@@ -67,7 +76,7 @@ jobs:
             set -eu
             adb devices
             adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
-            bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace --info
+            bash ./gradlew :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace --info
 
       - name: Remove private checkout and source-bearing build state
         if: always()
