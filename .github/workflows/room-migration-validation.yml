@@ -64,7 +64,7 @@ jobs:
           working-directory: private-source
           script: |
             set +x
-            set -euo pipefail
+            set -eu
             adb devices
             adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
             bash ./gradlew \
