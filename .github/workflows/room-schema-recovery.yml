@@ -2,6 +2,10 @@ name: Generate historical Room schemas
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/room-schema-recovery.yml"
 
 permissions: {}
 
@@ -69,8 +73,8 @@ jobs:
             exit 1
           fi
 
-          if [ ! -x ./gradlew ]; then
-            echo "::error::Gradle wrapper script is missing or not executable."
+          if [ ! -f ./gradlew ]; then
+            echo "::error::Gradle wrapper script is missing."
             exit 1
           fi
 
@@ -80,7 +84,7 @@ jobs:
           fi
 
           mkdir -p "$RUNNER_TEMP/room-schema-output"
-          if ! ./gradlew :app:kspDebugKotlin --no-daemon --no-build-cache > "$RUNNER_TEMP/room-ksp.log" 2>&1; then
+          if ! bash ./gradlew :app:kspDebugKotlin --no-daemon --no-build-cache > "$RUNNER_TEMP/room-ksp.log" 2>&1; then
             echo "::error::Room KSP schema generation failed for source revision $EXPECTED_SOURCE_SHA. Detailed build output was deliberately not printed."
             exit 1
           fi
