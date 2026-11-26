@@ -9,17 +9,27 @@ This repository is a **public CI control plane only**. It must never become a mi
 
 ## Room schema recovery workflow
 
-The workflow at `.github/workflows/room-schema-recovery.yml` generates the three historical Room schema snapshots from exact, allowlisted private source commits:
+The manual-only workflow at `.github/workflows/room-schema-recovery.yml` generates the three historical Room schema snapshots from exact, allowlisted private source commits:
 
-| Schema | Source commit |
-|---|---|
-| v1 | `61c2cf0ebbe99071c0cc16ad0dda6510a81b515f` |
-| v2 | `1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4` |
-| v3 | `016232db8bb587efd204a35ebb611c62e9eb65d9` |
+| Schema | Source commit | Generated identity hash | Entities |
+|---|---|---|---:|
+| v1 | `61c2cf0ebbe99071c0cc16ad0dda6510a81b515f` | `b2862079fb29b46c2602a70c832883c1` | 6 |
+| v2 | `1f814fda9f36fa1a3b2f60be25d5d8c33fa30db4` | `7c750a989b6ae29ac1ea05f3fa099784` | 7 |
+| v3 | `016232db8bb587efd204a35ebb611c62e9eb65d9` | `702fba4d99cf12e95553a5414dcd0082` | 8 |
 
-It checks out only those fixed revisions, runs the configured Room KSP task, validates the generated version and identity hash, removes the private checkout and Gradle state, then publishes only one allowlisted schema JSON per short-lived artifact (one-day retention).
+Generation succeeded across runs `45813789254` and `45814635637`. v2 required a temporary compile-only `LegacyImportDao` shim because the historical v2 commit references the DAO but omits its source file. The shim exists only in the ephemeral CI checkout, is never committed, and does not alter the Room database entity declaration or schema. All three artifacts were downloaded, parsed, SHA-256 checked against GitHub metadata and committed to the private app branch under `app/schemas/.../FinanceDatabase/`.
 
-The workflow has no push, pull-request, schedule, or untrusted-code trigger. It can be started manually from the Actions tab; the initial recovery run is also triggered only by a change to this workflow file on the public runner's main branch. It uses the repository Actions secret `PRIVATE_REPO_READ_TOKEN`; the secret value is never printed or written to the repository.
+The workflow checks out only the fixed historical revisions, runs the configured Room KSP task, validates version, generated identity hash and exact entity set, removes the private checkout and Gradle state, then publishes only one allowlisted schema JSON per short-lived artifact (one-day retention).
+
+## Room migration validation workflow
+
+The manual-only workflow at `.github/workflows/room-migration-validation.yml` checks out the exact private app commit containing all three snapshots and runs `FinanceDatabaseMigrationIntegrationTest` on an Android emulator. It covers v1→v2→v3 data preservation and the v2→v3 conversion-stage uniqueness constraint.
+
+- Run `45815632959` failed before tests because the initial emulator profile identifier was invalid (`Pixel_2`).
+- Run `45815670625` used the same initial profile and also failed during emulator setup.
+- Run `45815906563` uses the corrected AVD identifier `pixel_2` and is the current migration-validation attempt.
+
+Do not claim migration tests passed until the corrected run completes successfully.
 
 ## Security invariants
 
@@ -29,9 +39,9 @@ The workflow has no push, pull-request, schedule, or untrusted-code trigger. It 
 - Never expose tokens in logs, URLs, shell tracing, caches, artifacts, or job summaries.
 - Never execute untrusted pull-request code while a private-source credential is available.
 - Third-party Actions are pinned to full commit SHAs.
-- Build output is suppressed; only a non-sensitive success/failure summary is emitted.
-- Only the explicitly allowlisted generated Room schema JSON is uploaded, with one-day retention.
+- Gradle output is suppressed in the schema-generation workflow; only the allowlisted Room JSON is published.
+- The migration workflow uses only synthetic integration-test data and publishes no artifacts.
 
 ## Current verification status
 
-**Workflow committed; initial execution started.** The first run (ID `45813789254`) passed the secret-presence check and checked out the private v1 source. KSP generation and the remaining matrix jobs were still running at the last observation. GitHub does not expose secret values to repository readers; successful secret-presence validation is the evidence that the secret is available. No generated schema artifact is claimed until all jobs complete and artifacts are inspected.
+**Schema recovery: complete and committed to the private development branch. Migration validation: in progress.** The first step in both workflows verified that `PRIVATE_REPO_READ_TOKEN` is available without revealing its value. The full application build and the complete unit/instrumentation test inventory have not yet been run.
