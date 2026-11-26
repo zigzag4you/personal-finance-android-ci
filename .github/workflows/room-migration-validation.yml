@@ -1,4 +1,4 @@
-# Initial migration validation workflow; source revision is SHA-pinned below.
+# Room migration validation uses a test-optimized Android image on hosted runners.
 name: Validate Room database migrations
 
 on:
@@ -14,7 +14,7 @@ jobs:
   migration-validation:
     name: Room v1 to v3 migration integration tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 70
     permissions: {}
     # Android Emulator 37+ requires explicit opt-in when the runner disables KVM.
     env:
@@ -45,19 +45,28 @@ jobs:
           lfs: false
           clean: true
 
-      - name: Run real Room migration integration tests on Android emulator
+      # Google ATD is designed for automated tests and removes much of the
+      # normal device surface area. This migration suite needs Android/Room,
+      # not Play Store or a full interactive phone image.
+      - name: Run Room migration instrumentation on Google ATD
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 35
-          target: google_apis
+          target: google_atd
           arch: x86_64
           profile: pixel_2
-          emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          emulator-boot-timeout: 1200
+          disable-animations: false
+          emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
           working-directory: private-source
           script: |
             set +x
             set -euo pipefail
+            adb devices
+            adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
             bash ./gradlew :app:connectedDebugAndroidTest \
               -Pandroid.testInstrumentationRunnerArguments.class=com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest \
               --no-daemon --no-build-cache
