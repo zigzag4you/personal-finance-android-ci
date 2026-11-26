@@ -1,0 +1,71 @@
+name: Validate Room database migrations
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/room-migration-validation.yml"
+
+permissions: {}
+
+concurrency:
+  group: room-migration-validation
+  cancel-in-progress: false
+
+jobs:
+  migration-validation:
+    name: Room v1 to v3 migration integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions: {}
+    steps:
+      - name: Verify private source credential is configured
+        shell: bash
+        env:
+          PRIVATE_SOURCE_TOKEN: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
+        run: |
+          set +x
+          if [ -z "${PRIVATE_SOURCE_TOKEN}" ]; then
+            echo "::error::PRIVATE_REPO_READ_TOKEN is missing or unavailable to this workflow."
+            exit 1
+          fi
+          unset PRIVATE_SOURCE_TOKEN
+          echo "Private-source credential is present (value intentionally not inspected or printed)."
+
+      - name: Checkout private app with generated schema snapshots
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: zigzag4you/personal-finance-android
+          ref: 559443afa98f850f650b5b73aa7c2b1f8b5ab314
+          token: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
+          path: private-source
+          persist-credentials: false
+          submodules: false
+          lfs: false
+          clean: true
+
+      - name: Run real Room migration integration tests on Android emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: Pixel_2
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          working-directory: private-source
+          script: |
+            set +x
+            set -euo pipefail
+            bash ./gradlew :app:connectedDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.class=com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest \
+              --no-daemon --no-build-cache
+
+      - name: Remove private checkout and source-bearing build state
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          rm -rf "$GITHUB_WORKSPACE/private-source"
+          rm -rf "$HOME/.gradle/caches" "$HOME/.gradle/daemon" "$HOME/.gradle/native" "$HOME/.gradle/notifications" "$HOME/.gradle/wrapper"
