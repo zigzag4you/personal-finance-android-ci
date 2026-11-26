@@ -9,7 +9,7 @@ This repository is a **public CI control plane only**. It must never become a mi
 
 ## Room schema recovery workflow
 
-The manual-only workflow at `.github/workflows/room-schema-recovery.yml` generates the three historical Room schema snapshots from exact, allowlisted private source commits:
+The workflow at `.github/workflows/room-schema-recovery.yml` generates the three historical Room schema snapshots from exact, allowlisted private source commits:
 
 | Schema | Source commit |
 |---|---|
@@ -19,7 +19,7 @@ The manual-only workflow at `.github/workflows/room-schema-recovery.yml` generat
 
 It checks out only those fixed revisions, runs the configured Room KSP task, validates the generated version and identity hash, removes the private checkout and Gradle state, then publishes only one allowlisted schema JSON per short-lived artifact (one-day retention).
 
-The workflow has no push, pull-request, schedule, or untrusted-code trigger. It is started manually from the Actions tab. It uses the repository Actions secret `PRIVATE_REPO_READ_TOKEN`; the secret value is never printed or written to the repository.
+The workflow has no push, pull-request, schedule, or untrusted-code trigger. It can be started manually from the Actions tab; the initial recovery run is also triggered only by a change to this workflow file on the public runner's main branch. It uses the repository Actions secret `PRIVATE_REPO_READ_TOKEN`; the secret value is never printed or written to the repository.
 
 ## Security invariants
 
@@ -34,4 +34,4 @@ The workflow has no push, pull-request, schedule, or untrusted-code trigger. It 
 
 ## Current verification status
 
-**Workflow committed; execution not yet verified.** GitHub does not expose secret values to repository readers, and the available connector cannot inspect the configured Actions secret. The first manual run safely checks whether `PRIVATE_REPO_READ_TOKEN` is available without revealing it. No workflow run or generated schema artifact is claimed until GitHub reports a completed run.
+**Workflow committed; initial execution started.** The first run (ID `45813789254`) passed the secret-presence check and checked out the private v1 source. KSP generation and the remaining matrix jobs were still running at the last observation. GitHub does not expose secret values to repository readers; successful secret-presence validation is the evidence that the secret is available. No generated schema artifact is claimed until all jobs complete and artifacts are inspected.
