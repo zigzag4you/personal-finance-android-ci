@@ -201,11 +201,11 @@ jobs:
               report="$(bash ./gradlew :app:dependencyInsight --dependency "$module" --configuration "$configuration" --no-daemon --console=plain)"
               printf '%s\n' "$report"
               selected="$(printf '%s\n' "$report" | grep -m1 -E '^org[.]jetbrains[.]kotlinx:kotlinx-serialization-(core|json):[0-9]')" || true
-              if [ "$module" = "kotlinx-serialization-core" ] && ! printf '%s' "$selected" | grep -q ':1[.]8[.]1([[:space:]]|$)'; then
+              if [ "$module" = "kotlinx-serialization-core" ] && ! printf '%s' "$selected" | grep -Eq ':1[.]8[.]1([[:space:]]|$)'; then
                 echo "::error::kotlinx-serialization-core must resolve to 1.8.1 in $configuration; got: ${selected:-NOT_FOUND}"
                 exit 1
               fi
-              if [ "$module" = "kotlinx-serialization-json" ] && printf '%s' "$selected" | grep -q . && ! printf '%s' "$selected" | grep -q ':1[.]8[.]1([[:space:]]|$)'; then
+              if [ "$module" = "kotlinx-serialization-json" ] && printf '%s' "$selected" | grep -q . && ! printf '%s' "$selected" | grep -Eq ':1[.]8[.]1([[:space:]]|$)'; then
                 echo "::error::kotlinx-serialization-json must resolve to 1.8.1 in $configuration; got: $selected"
                 exit 1
               fi
