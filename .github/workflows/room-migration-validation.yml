@@ -165,7 +165,7 @@ jobs:
           ram-size: 2048M
           heap-size: 512M
           emulator-boot-timeout: 1200
-          disable-animations: false
+          disable-animations: true
           emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
           working-directory: private-source
           script: |
