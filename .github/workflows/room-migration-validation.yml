@@ -45,6 +45,10 @@ jobs:
           lfs: false
           clean: true
 
+      - name: Validate public CI workflow guardrails
+        shell: bash
+        run: python3 ci-control/.ci/test_workflow_guardrails.py
+
       - name: Resolve and validate private source SHA
         id: source
         shell: bash
