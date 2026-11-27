@@ -3,6 +3,11 @@ name: Full Android verification and Room migrations
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .ci/trigger-full-verification
 
 permissions: {}
 
