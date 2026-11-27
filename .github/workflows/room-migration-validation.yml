@@ -155,6 +155,7 @@ jobs:
       # Boot Google ATD only after all host-side gates pass. This suite needs
       # Android/Room instrumentation, not Play Store or a full interactive phone image.
       - name: Run Android instrumentation on Google ATD
+        timeout-minutes: 35
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 35
