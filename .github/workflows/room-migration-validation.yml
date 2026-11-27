@@ -140,7 +140,7 @@ jobs:
                       message = (issue.attrib.get("message") or "").replace("\\n", " ")
                       detail = (issue.text or "").strip().splitlines()
                       print(f"FAILED {case.attrib.get('classname')}.{case.attrib.get('name')}: {message}")
-                      for line in detail[:12]:
+                      for line in detail[:48]:
                           print(f"  {line[:400]}")
           print(f"JVM_TEST_SUMMARY total={tests} failed={failures} skipped={skipped} passed={tests-failures-skipped}")
           PY
@@ -188,6 +188,22 @@ jobs:
                       print(f"LINT {level} {rule_id} {location}: {message}")
           print("LINT_SUMMARY " + " ".join(f"{key.lower()}={value}" for key, value in sorted(totals.items())))
           PY
+
+      # Capture the resolved serialization runtime before emulator tests.
+      # The last run reached AndroidJUnit but failed with a GeneratedSerializer
+      # AbstractMethodError; inspect both app and instrumentation runtime graphs.
+      - name: Diagnose Kotlin serialization runtime alignment
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          for configuration in debugRuntimeClasspath debugAndroidTestRuntimeClasspath; do
+            echo "===== ${configuration}: kotlinx-serialization-core ====="
+            bash ./gradlew :app:dependencyInsight --dependency kotlinx-serialization-core --configuration "$configuration" --no-daemon --console=plain
+            echo "===== ${configuration}: kotlinx-serialization-json ====="
+            bash ./gradlew :app:dependencyInsight --dependency kotlinx-serialization-json --configuration "$configuration" --no-daemon --console=plain
+          done
 
       # GitHub-hosted Ubuntu runners may expose /dev/kvm without granting
       # the runner user access. Fix permissions before android-emulator-runner
