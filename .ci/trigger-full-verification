@@ -1,10 +1,10 @@
-Run full FINCORE verification against private source 11e06d8fe518d43a4890c11e51e3e80d2e063c6b.
+Run full FINCORE verification against private source 09eb792217d1fd026e127a75c8bee9cfd164cda1.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-Product increment: ledger-backed monthly expense-account insights.
-- New read-only projector groups posted journal lines by actual EXPENSE account and compares the selected month with the previous calendar month.
-- Debit increases expense; credits and reversals reduce it. Native currencies remain separate. BigInteger intermediates fail closed on Long overflow.
-- Added five JVM regression tests for account/month grouping, credit/reversal netting, currency isolation, date boundaries and duplicate identities.
-- Added bilingual Compose screen and encrypted Room snapshot route, exposed from the finance home. No merchant, counterparty or category is inferred from journal descriptions.
-- Account directory home entry was separately verified by Run #52 on 784e59ad7b67bdc37dfbcb524c65ca86e2bf58dc.
-Require full build, Quality Guardian, exactly 690 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
+Product increments: monthly expense-account insights and direct bank reconciliation entry.
+- Expense insights groups posted journal lines by actual EXPENSE account; compares selected and prior months; nets debits, credits and reversals; preserves negative net totals and native currency boundaries.
+- Corrected FIN-Q-0030 test expectation: a -2500 net expense remains visible in selected-month totals, per the contract. Run #53 showed 689/690 JVM passed; no Android instrumentation ran.
+- FIN-Q-0029: both BankReconciliationScreen coroutine handlers now rethrow CancellationException before catching Exception. Quality Guardian checks both pairs and rejects broad Throwable catches.
+- Quality Guardian inventory is now 23 tests; authored JVM inventory 690; Android instrumentation inventory 37.
+- Added direct home-screen bank reconciliation route. It remains preview-only and never clears or posts automatically.
+Require full build, Quality Guardian 23/23, exactly 690 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
 Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
