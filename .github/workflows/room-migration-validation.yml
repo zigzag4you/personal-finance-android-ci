@@ -187,15 +187,17 @@ jobs:
 
           reports = sorted(Path("app/build/outputs/androidTest-results").rglob("*.xml"))
           if not reports:
-              print("No Android instrumentation JUnit XML report was produced.")
-              raise SystemExit(0)
+              print("::error::No Android instrumentation JUnit XML report was produced.")
+              raise SystemExit(1)
 
           total = failed = skipped = 0
+          invalid_reports = 0
           for report in reports:
               try:
                   root = ET.parse(report).getroot()
               except (OSError, ET.ParseError) as exc:
-                  print(f"Could not read Android test report {report}: {exc}")
+                  invalid_reports += 1
+                  print(f"::error::Could not read Android test report {report}: {exc}")
                   continue
               for case in root.iter("testcase"):
                   total += 1
@@ -214,6 +216,18 @@ jobs:
                       for line in detail[:12]:
                           print(f"  {line[:400]}")
           print(f"ANDROID_TEST_SUMMARY total={total} failed={failed} skipped={skipped} passed={total-failed-skipped}")
+          if invalid_reports:
+              print(f"::error::{invalid_reports} Android instrumentation report(s) were invalid.")
+              raise SystemExit(1)
+          if total == 0:
+              print("::error::Android instrumentation produced zero test cases; treat this as infrastructure/test-launch failure, never as success.")
+              raise SystemExit(1)
+          if failed:
+              print(f"::error::{failed} Android instrumentation test(s) failed.")
+              raise SystemExit(1)
+          if total == skipped:
+              print("::error::All Android instrumentation test cases were skipped; no tests actually ran.")
+              raise SystemExit(1)
           PY
 
       - name: Remove private checkout and source-bearing build state
