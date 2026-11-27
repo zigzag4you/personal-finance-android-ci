@@ -1,5 +1,5 @@
-Run full FINCORE verification against private source 266a35c165d092662e081f4ffd1f287a3aaac580.
-Workflow commit: 714af9a94b8a246b86a0e2f851746744bf0c09a1.
+Run full FINCORE verification against private source f603c5b6ad40878543898ec398c20de36ea9045c.
+Workflow commit: 4e81156b3b38cf941d3618c8669303053bd1054f.
 Instrumentation runner script commit: 053b7c4210624f698c83cdea1327ce38a76f48bf.
 The private source pins published Android Gradle Plugin 9.5.1 and AndroidJUnitRunner timeout_msec=300000.
 The CI workflow validates the source pin, checks out the exact private source, runs Quality Guardian, host compile/JVM/Lint/APK gates, enables KVM, and boots Google ATD API 35.
@@ -19,3 +19,7 @@ Private source must remain ephemeral; do not upload source-bearing artifacts.
 Keep Room v3. No merge or release.
 
 Run #39 (45971730171) reached a fully booted Google ATD API 35, passed PackageManager readiness, installed app and test APKs, and executed Android instrumentation. It reported 29 cases, 4 failures, 0 skipped, 25 passed; the source inventory expects 37. Two Room migration tests failed with AbstractMethodError in kotlinx.serialization.internal.GeneratedSerializer.typeParametersSerializers, and two test classes failed AndroidJUnit4 runner initialization. This is a runtime dependency/runner compatibility investigation, not a demonstrated SQL migration failure. The app source minSdk is 26 and Room remains v3. New workflow step runs dependencyInsight for kotlinx-serialization-core/json on debugRuntimeClasspath and debugAndroidTestRuntimeClasspath; failure summaries now retain 48 stack lines. Do not change minSdk or Room schema based on this symptom alone.
+Run #39 (45971730171) reached Android instrumentation but reported 29/37 cases: 25 passed, 4 failed, 0 skipped. Both Room migration tests raised kotlinx.serialization.internal.GeneratedSerializer.typeParametersSerializers AbstractMethodError; EncryptedDatabaseIntegrationTest and JournalPersistenceIntegrationTest had AndroidJUnit4 runner initialization errors.
+Run #40 (45974228190) reproduced the same Android summary. Its dependencyInsight identified the exact ABI conflict: Room 3.0.3 room3-migration-jvm brings kotlinx-serialization-json 1.8.1 and requests core 1.8.1, while androidx.lifecycle:lifecycle-viewmodel-savedstate-android 2.9.4 brings core/BOM 1.7.3; consistent resolution selected core 1.7.3 alongside JSON 1.8.1.
+Private source fix: add kotlinx-serialization-bom 1.8.1 to app implementation (commits 605761b and b5a161a). CI now fails before emulator startup unless serialization core is 1.8.1 and JSON is 1.8.1 wherever present; Android failure summaries retain up to 48 stack lines.
+The two AndroidJUnit4 runner initialization errors remain separately unresolved; inspect their full stack traces in the next run. Require exactly 37 executed Android cases, zero skipped/failed, and both Room migration tests passing. Room v3 only; no merge/release; private source must remain ephemeral.
