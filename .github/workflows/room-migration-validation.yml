@@ -152,6 +152,29 @@ jobs:
           print("LINT_SUMMARY " + " ".join(f"{key.lower()}={value}" for key, value in sorted(totals.items())))
           PY
 
+      # GitHub-hosted Ubuntu runners may expose /dev/kvm without granting
+      # the runner user access. Fix permissions before android-emulator-runner
+      # probes KVM; otherwise API 37+ emulators fall back to very slow TCG.
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm
+            if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+              echo "KVM is readable and writable by the runner."
+            else
+              echo "::warning::KVM exists but remains inaccessible; emulator will use software acceleration."
+              echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "::warning::/dev/kvm is not present on this runner; emulator will use software acceleration."
+            echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+          fi
+
       # Boot Google ATD only after all host-side gates pass. This suite needs
       # Android/Room instrumentation, not Play Store or a full interactive phone image.
       - name: Run Android instrumentation on Google ATD
