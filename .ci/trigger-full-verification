@@ -1,10 +1,10 @@
-Run full FINCORE verification against private source 7fcdd51ed2b5774309dc0ec6af3b3a6fb3a5ff97.
+Run full FINCORE verification against private source 0b5e02bf15975b2dd8a3c9009b1dc7c509a760cb.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-Product refinement after Run #54:
-- Finance home now places the financial dashboard first and groups six core workflows in a compact two-column tools card.
-- Expense insights shows relative percentage movement when the previous-month baseline is positive.
-- Currency sorting uses code plus fraction digits so different precision definitions sharing a code remain distinct in the UI.
-- Bank reconciliation route returns to the finance center with the correct localized back label.
-Prior verified baseline: Run #54 passed on 09eb792217d1fd026e127a75c8bee9cfd164cda1 (Guardian 23/23, JVM 690/690, Android 37/37; zero failures/skips; Lint/APKs/serialization/Room migrations passed).
-Require full build, Quality Guardian 23/23, exactly 690 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
+Product increment: unified monthly income and expense insights.
+- Generalized the ledger-flow projector for actual EXPENSE and INCOME accounts. Expense debits increase expense; income credits increase income; opposite-side postings and reversals reduce each flow.
+- One bilingual Financial Insights screen switches between Expenses and Income. It compares adjacent months, shows native-currency totals, account trends, signed net changes and percentage movement where supported.
+- Added five income-account JVM regression tests. Authored inventory is exactly 695 JVM and 37 Android.
+- FIN-Q-0031: Run #55 exposed a missing Compose Row import in MainActivity; corrected in source before this pin.
+- Prior verified baseline: Run #54 passed 690 JVM / 37 Android and Guardian 23/23 on 09eb792217d1fd026e127a75c8bee9cfd164cda1.
+Require full build, Quality Guardian 23/23, exactly 695 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
 Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
