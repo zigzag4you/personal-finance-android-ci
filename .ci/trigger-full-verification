@@ -1,5 +1,5 @@
 Run full FINCORE verification against private source f603c5b6ad40878543898ec398c20de36ea9045c.
-Workflow commit: 4e81156b3b38cf941d3618c8669303053bd1054f.
+Workflow commit: 682f9d9701a98a69a97857baf7ff41a4321ade4c.
 Instrumentation runner script commit: 053b7c4210624f698c83cdea1327ce38a76f48bf.
 The private source pins published Android Gradle Plugin 9.5.1 and AndroidJUnitRunner timeout_msec=300000.
 The CI workflow validates the source pin, checks out the exact private source, runs Quality Guardian, host compile/JVM/Lint/APK gates, enables KVM, and boots Google ATD API 35.
@@ -23,3 +23,5 @@ Run #39 (45971730171) reached Android instrumentation but reported 29/37 cases: 
 Run #40 (45974228190) reproduced the same Android summary. Its dependencyInsight identified the exact ABI conflict: Room 3.0.3 room3-migration-jvm brings kotlinx-serialization-json 1.8.1 and requests core 1.8.1, while androidx.lifecycle:lifecycle-viewmodel-savedstate-android 2.9.4 brings core/BOM 1.7.3; consistent resolution selected core 1.7.3 alongside JSON 1.8.1.
 Private source fix: add kotlinx-serialization-bom 1.8.1 to app implementation (commits 605761b and b5a161a). CI now fails before emulator startup unless serialization core is 1.8.1 and JSON is 1.8.1 wherever present; Android failure summaries retain up to 48 stack lines.
 The two AndroidJUnit4 runner initialization errors remain separately unresolved; inspect their full stack traces in the next run. Require exactly 37 executed Android cases, zero skipped/failed, and both Room migration tests passing. Room v3 only; no merge/release; private source must remain ephemeral.
+Run #44 (45975976344) checked out exact private source f603c5b6ad40878543898ec398c20de36ea9045c. Quality Guardian, host build, JVM 685/685, Lint and APK gates passed. DependencyInsight selected kotlinx-serialization-core 1.8.1, confirming the app BOM fix resolved the previous core/json version mismatch. The pre-emulator gate then rejected this valid version because it used grep -q (BRE) with ERE grouping syntax; no emulator or Android instrumentation ran.
+Fix: public workflow commit 682f9d9701a98a69a97857baf7ff41a4321ade4c changes both version assertions to grep -Eq. Workflow was re-fetched and structurally checked: one jobs block, one KVM step, one cleanup step, no trailing content. Re-run the same exact source to validate the corrected gate, then proceed to Android instrumentation. Keep full 48-line failure traces; Room v3; no merge/release.
