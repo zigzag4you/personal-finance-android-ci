@@ -57,7 +57,570 @@ jobs:
             echo "::error::Trigger file must contain exactly one valid pinned private source SHA."
             exit 1
           fi
-          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}\\.$' "$trigger")"
+          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}\.
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Trigger file contains an ambiguous source pin."
+            exit 1
+          fi
+          echo "Resolved private source SHA: $source_sha"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+      # The public CI runner executes deterministic quality checks against
+      # the private checkout; only test output leaves this ephemeral workspace.
+      - name: Run Quality Guardian checks
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -eu
+          python3 --version
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      # Fail fast on the hosted runner before paying the emulator startup cost.
+      # These tasks do not require a running Android device.
+      - name: Run host-side compile, unit tests, lint and APK preflight
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -eu
+          bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --no-build-cache --stacktrace
+
+      - name: Summarize host-side JUnit failures
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
+          if not reports:
+              print("No JVM JUnit XML reports were produced.")
+              raise SystemExit(0)
+          failures = 0
+          skipped = 0
+          tests = 0
+          for report in reports:
+              root = ET.parse(report).getroot()
+              cases = root.findall(".//testcase")
+              tests += len(cases)
+              for case in cases:
+                  if case.find("skipped") is not None:
+                      skipped += 1
+                  issue = case.find("failure")
+                  if issue is None:
+                      issue = case.find("error")
+                  if issue is not None:
+                      failures += 1
+                      message = (issue.attrib.get("message") or "").replace("\\n", " ")
+                      detail = (issue.text or "").strip().splitlines()
+                      print(f"FAILED {case.attrib.get('classname')}.{case.attrib.get('name')}: {message}")
+                      for line in detail[:12]:
+                          print(f"  {line[:400]}")
+          print(f"JVM_TEST_SUMMARY total={tests} failed={failures} skipped={skipped} passed={tests-failures-skipped}")
+          PY
+
+      - name: Summarize host-side lint findings
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import json
+
+          reports = sorted(Path("app/build/reports").glob("lint-results-*.sarif"))
+          if not reports:
+              print("No Android Lint SARIF report was produced.")
+              raise SystemExit(0)
+
+          totals = Counter()
+          for report in reports:
+              try:
+                  payload = json.loads(report.read_text(encoding="utf-8"))
+              except (OSError, json.JSONDecodeError) as exc:
+                  print(f"Could not read Lint report {report}: {exc}")
+                  continue
+              for run in payload.get("runs", []):
+                  rules = {
+                      rule.get("id"): rule
+                      for rule in run.get("tool", {}).get("driver", {}).get("rules", [])
+                  }
+                  for finding in run.get("results", []):
+                      level = finding.get("level", "warning").upper()
+                      totals[level] += 1
+                      rule_id = finding.get("ruleId", "unknown")
+                      message = finding.get("message", {}).get("text", "")
+                      location = ""
+                      locations = finding.get("locations", [])
+                      if locations:
+                          physical = locations[0].get("physicalLocation", {})
+                          uri = physical.get("artifactLocation", {}).get("uri", "")
+                          line = physical.get("region", {}).get("startLine", "?")
+                          location = f"{uri}:{line}"
+                      print(f"LINT {level} {rule_id} {location}: {message}")
+          print("LINT_SUMMARY " + " ".join(f"{key.lower()}={value}" for key, value in sorted(totals.items())))
+          PY
+
+      # GitHub-hosted Ubuntu runners may expose /dev/kvm without granting
+      # the runner user access. Fix permissions before android-emulator-runner
+      # probes KVM; otherwise API 37+ emulators fall back to very slow TCG.
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm
+            if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+              echo "KVM is readable and writable by the runner."
+            else
+              echo "::warning::KVM exists but remains inaccessible; emulator will use software acceleration."
+              echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "::warning::/dev/kvm is not present on this runner; emulator will use software acceleration."
+            echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+          fi
+
+      # Boot Google ATD only after all host-side gates pass. This suite needs
+      # Android/Room instrumentation, not Play Store or a full interactive phone image.
+      - name: Run Android instrumentation on Google ATD
+        timeout-minutes: 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          target: google_atd
+          arch: x86_64
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          emulator-boot-timeout: 1200
+          disable-animations: true
+          emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
+          working-directory: private-source
+          script: |
+            set +x
+            set -eu
+            adb devices
+            adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
+            echo "Pre-install PackageManager readiness check:"
+            package_manager_ready=0
+            for attempt in 1 2 3 4 5 6; do
+              if adb -s "$ANDROID_SERIAL" shell cmd package list packages >/dev/null 2>&1; then
+                package_manager_ready=1
+                echo "PackageManager is responsive (attempt $attempt)."
+                break
+              fi
+              echo "PackageManager not responsive yet (attempt $attempt/6)."
+              sleep 5
+            done
+            echo "Pre-test service and resource snapshot:"
+            adb -s "$ANDROID_SERIAL" shell service list 2>&1 | grep -Ei 'package|activity' | head -n 40 || true
+            adb -s "$ANDROID_SERIAL" shell dumpsys meminfo 2>&1 | sed -n '1,70p' || true
+            adb -s "$ANDROID_SERIAL" shell df -h /data 2>&1 || true
+            if [ "$package_manager_ready" -ne 1 ]; then
+              echo "::error::Android PackageManager did not become responsive after emulator boot; instrumentation will not be reported as an app test failure."
+              adb -s "$ANDROID_SERIAL" logcat -d -b crash -b system -t 2500 2>&1 | grep -Ei 'FATAL EXCEPTION|system_server|PackageManager|OutOfMemory|low memory|lmkd|watchdog|service.*package' | tail -n 200 || true
+              exit 86
+            fi
+            set +e
+            bash ./gradlew :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace --info
+            gradle_status=$?
+            set -e
+            echo "Android instrumentation Gradle exit code: $gradle_status"
+            echo "Bounded emulator system diagnostics before emulator shutdown:"
+            adb devices -l || true
+            adb -s "$ANDROID_SERIAL" logcat -d -b crash -b system -t 2500 2>&1 | grep -Ei 'FATAL EXCEPTION|system_server|PackageManager|Broken pipe|OutOfMemory|low memory|lmkd|watchdog|INSTALL_FAILED|install.*failed|dex2oat' | tail -n 160 || true
+            adb -s "$ANDROID_SERIAL" shell dumpsys meminfo 2>&1 | sed -n '1,80p' || true
+            adb -s "$ANDROID_SERIAL" shell df -h /data 2>&1 || true
+            exit "$gradle_status"
+
+      - name: Summarize Android instrumentation failures
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("app/build/outputs/androidTest-results").rglob("*.xml"))
+          if not reports:
+              print("::error::No Android instrumentation JUnit XML report was produced.")
+              raise SystemExit(1)
+
+          total = failed = skipped = 0
+          invalid_reports = 0
+          required_migration_cases = {
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree",
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree",
+          }
+          observed_migration_cases = set()
+          skipped_migration_cases = set()
+          for report in reports:
+              try:
+                  root = ET.parse(report).getroot()
+              except (OSError, ET.ParseError) as exc:
+                  invalid_reports += 1
+                  print(f"::error::Could not read Android test report {report}: {exc}")
+                  continue
+              for case in root.iter("testcase"):
+                  total += 1
+                  name = case.attrib.get("classname", "") + "." + case.attrib.get("name", "")
+                  if name in required_migration_cases:
+                      observed_migration_cases.add(name)
+                  skipped_node = case.find("skipped")
+                  if skipped_node is not None:
+                      skipped += 1
+                      if name in required_migration_cases:
+                          skipped_migration_cases.add(name)
+                  failure = case.find("failure")
+                  error = case.find("error")
+                  issue = failure if failure is not None else error
+                  if issue is not None:
+                      failed += 1
+                      message = issue.attrib.get("message", "")
+                      print(f"ANDROID_TEST_FAILURE {name}: {message[:400]}")
+                      detail = (issue.text or "").splitlines()
+                      for line in detail[:12]:
+                          print(f"  {line[:400]}")
+          print(f"ANDROID_TEST_SUMMARY total={total} failed={failed} skipped={skipped} passed={total-failed-skipped}")
+          if invalid_reports:
+              print(f"::error::{invalid_reports} Android instrumentation report(s) were invalid.")
+              raise SystemExit(1)
+          if total == 0:
+              print("::error::Android instrumentation produced zero test cases; treat this as infrastructure/test-launch failure, never as success.")
+              raise SystemExit(1)
+          if failed:
+              print(f"::error::{failed} Android instrumentation test(s) failed.")
+              raise SystemExit(1)
+          if total == skipped:
+              print("::error::All Android instrumentation test cases were skipped; no tests actually ran.")
+              raise SystemExit(1)
+          expected_android_cases = 37  # Source-derived @Test inventory for the pinned FINCORE candidate.
+          if total != expected_android_cases:
+              print(f"::error::Expected all {expected_android_cases} Android instrumentation cases, but JUnit reported {total}.")
+              raise SystemExit(1)
+          if skipped:
+              print(f"::error::{skipped} Android instrumentation case(s) were skipped; full-suite verification requires zero skips.")
+              raise SystemExit(1)
+          missing_migration_cases = sorted(required_migration_cases - observed_migration_cases)
+          if missing_migration_cases:
+              print("::error::Required Room migration instrumentation cases were not reported:")
+              for name in missing_migration_cases:
+                  print(f"  MISSING_MIGRATION_TEST {name}")
+              raise SystemExit(1)
+          if skipped_migration_cases:
+              print("::error::Required Room migration instrumentation cases were skipped:")
+              for name in sorted(skipped_migration_cases):
+                  print(f"  SKIPPED_MIGRATION_TEST {name}")
+              raise SystemExit(1)
+          PY
+
+      - name: Remove private checkout and source-bearing build state
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          rm -rf "$GITHUB_WORKSPACE/private-source"
+          rm -rf "$HOME/.gradle/caches" "$HOME/.gradle/daemon" "$HOME/.gradle/native" "$HOME/.gradle/notifications" "$HOME/.gradle/wrapper"
+ "$trigger")"
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Trigger file contains an ambiguous source pin."
+            exit 1
+          fi
+          echo "Resolved private source SHA: $source_sha"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout private app with generated schema snapshots
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: zigzag4you/personal-finance-android
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
+          path: private-source
+          persist-credentials: false
+          submodules: false
+          lfs: false
+          clean: true
+
+      # The public CI runner executes deterministic quality checks against
+      # the private checkout; only test output leaves this ephemeral workspace.
+      - name: Run Quality Guardian checks
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -eu
+          python3 --version
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      # Fail fast on the hosted runner before paying the emulator startup cost.
+      # These tasks do not require a running Android device.
+      - name: Run host-side compile, unit tests, lint and APK preflight
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          set -eu
+          bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --no-build-cache --stacktrace
+
+      - name: Summarize host-side JUnit failures
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
+          if not reports:
+              print("No JVM JUnit XML reports were produced.")
+              raise SystemExit(0)
+          failures = 0
+          skipped = 0
+          tests = 0
+          for report in reports:
+              root = ET.parse(report).getroot()
+              cases = root.findall(".//testcase")
+              tests += len(cases)
+              for case in cases:
+                  if case.find("skipped") is not None:
+                      skipped += 1
+                  issue = case.find("failure")
+                  if issue is None:
+                      issue = case.find("error")
+                  if issue is not None:
+                      failures += 1
+                      message = (issue.attrib.get("message") or "").replace("\\n", " ")
+                      detail = (issue.text or "").strip().splitlines()
+                      print(f"FAILED {case.attrib.get('classname')}.{case.attrib.get('name')}: {message}")
+                      for line in detail[:12]:
+                          print(f"  {line[:400]}")
+          print(f"JVM_TEST_SUMMARY total={tests} failed={failures} skipped={skipped} passed={tests-failures-skipped}")
+          PY
+
+      - name: Summarize host-side lint findings
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import json
+
+          reports = sorted(Path("app/build/reports").glob("lint-results-*.sarif"))
+          if not reports:
+              print("No Android Lint SARIF report was produced.")
+              raise SystemExit(0)
+
+          totals = Counter()
+          for report in reports:
+              try:
+                  payload = json.loads(report.read_text(encoding="utf-8"))
+              except (OSError, json.JSONDecodeError) as exc:
+                  print(f"Could not read Lint report {report}: {exc}")
+                  continue
+              for run in payload.get("runs", []):
+                  rules = {
+                      rule.get("id"): rule
+                      for rule in run.get("tool", {}).get("driver", {}).get("rules", [])
+                  }
+                  for finding in run.get("results", []):
+                      level = finding.get("level", "warning").upper()
+                      totals[level] += 1
+                      rule_id = finding.get("ruleId", "unknown")
+                      message = finding.get("message", {}).get("text", "")
+                      location = ""
+                      locations = finding.get("locations", [])
+                      if locations:
+                          physical = locations[0].get("physicalLocation", {})
+                          uri = physical.get("artifactLocation", {}).get("uri", "")
+                          line = physical.get("region", {}).get("startLine", "?")
+                          location = f"{uri}:{line}"
+                      print(f"LINT {level} {rule_id} {location}: {message}")
+          print("LINT_SUMMARY " + " ".join(f"{key.lower()}={value}" for key, value in sorted(totals.items())))
+          PY
+
+      # GitHub-hosted Ubuntu runners may expose /dev/kvm without granting
+      # the runner user access. Fix permissions before android-emulator-runner
+      # probes KVM; otherwise API 37+ emulators fall back to very slow TCG.
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm
+            if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+              echo "KVM is readable and writable by the runner."
+            else
+              echo "::warning::KVM exists but remains inaccessible; emulator will use software acceleration."
+              echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "::warning::/dev/kvm is not present on this runner; emulator will use software acceleration."
+            echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+          fi
+
+      # Boot Google ATD only after all host-side gates pass. This suite needs
+      # Android/Room instrumentation, not Play Store or a full interactive phone image.
+      - name: Run Android instrumentation on Google ATD
+        timeout-minutes: 35
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          target: google_atd
+          arch: x86_64
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          emulator-boot-timeout: 1200
+          disable-animations: true
+          emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
+          working-directory: private-source
+          script: |
+            set +x
+            set -eu
+            adb devices
+            adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
+            echo "Pre-install PackageManager readiness check:"
+            package_manager_ready=0
+            for attempt in 1 2 3 4 5 6; do
+              if adb -s "$ANDROID_SERIAL" shell cmd package list packages >/dev/null 2>&1; then
+                package_manager_ready=1
+                echo "PackageManager is responsive (attempt $attempt)."
+                break
+              fi
+              echo "PackageManager not responsive yet (attempt $attempt/6)."
+              sleep 5
+            done
+            echo "Pre-test service and resource snapshot:"
+            adb -s "$ANDROID_SERIAL" shell service list 2>&1 | grep -Ei 'package|activity' | head -n 40 || true
+            adb -s "$ANDROID_SERIAL" shell dumpsys meminfo 2>&1 | sed -n '1,70p' || true
+            adb -s "$ANDROID_SERIAL" shell df -h /data 2>&1 || true
+            if [ "$package_manager_ready" -ne 1 ]; then
+              echo "::error::Android PackageManager did not become responsive after emulator boot; instrumentation will not be reported as an app test failure."
+              adb -s "$ANDROID_SERIAL" logcat -d -b crash -b system -t 2500 2>&1 | grep -Ei 'FATAL EXCEPTION|system_server|PackageManager|OutOfMemory|low memory|lmkd|watchdog|service.*package' | tail -n 200 || true
+              exit 86
+            fi
+            set +e
+            bash ./gradlew :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace --info
+            gradle_status=$?
+            set -e
+            echo "Android instrumentation Gradle exit code: $gradle_status"
+            echo "Bounded emulator system diagnostics before emulator shutdown:"
+            adb devices -l || true
+            adb -s "$ANDROID_SERIAL" logcat -d -b crash -b system -t 2500 2>&1 | grep -Ei 'FATAL EXCEPTION|system_server|PackageManager|Broken pipe|OutOfMemory|low memory|lmkd|watchdog|INSTALL_FAILED|install.*failed|dex2oat' | tail -n 160 || true
+            adb -s "$ANDROID_SERIAL" shell dumpsys meminfo 2>&1 | sed -n '1,80p' || true
+            adb -s "$ANDROID_SERIAL" shell df -h /data 2>&1 || true
+            exit "$gradle_status"
+
+      - name: Summarize Android instrumentation failures
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("app/build/outputs/androidTest-results").rglob("*.xml"))
+          if not reports:
+              print("::error::No Android instrumentation JUnit XML report was produced.")
+              raise SystemExit(1)
+
+          total = failed = skipped = 0
+          invalid_reports = 0
+          required_migration_cases = {
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree",
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree",
+          }
+          observed_migration_cases = set()
+          skipped_migration_cases = set()
+          for report in reports:
+              try:
+                  root = ET.parse(report).getroot()
+              except (OSError, ET.ParseError) as exc:
+                  invalid_reports += 1
+                  print(f"::error::Could not read Android test report {report}: {exc}")
+                  continue
+              for case in root.iter("testcase"):
+                  total += 1
+                  name = case.attrib.get("classname", "") + "." + case.attrib.get("name", "")
+                  if name in required_migration_cases:
+                      observed_migration_cases.add(name)
+                  skipped_node = case.find("skipped")
+                  if skipped_node is not None:
+                      skipped += 1
+                      if name in required_migration_cases:
+                          skipped_migration_cases.add(name)
+                  failure = case.find("failure")
+                  error = case.find("error")
+                  issue = failure if failure is not None else error
+                  if issue is not None:
+                      failed += 1
+                      message = issue.attrib.get("message", "")
+                      print(f"ANDROID_TEST_FAILURE {name}: {message[:400]}")
+                      detail = (issue.text or "").splitlines()
+                      for line in detail[:12]:
+                          print(f"  {line[:400]}")
+          print(f"ANDROID_TEST_SUMMARY total={total} failed={failed} skipped={skipped} passed={total-failed-skipped}")
+          if invalid_reports:
+              print(f"::error::{invalid_reports} Android instrumentation report(s) were invalid.")
+              raise SystemExit(1)
+          if total == 0:
+              print("::error::Android instrumentation produced zero test cases; treat this as infrastructure/test-launch failure, never as success.")
+              raise SystemExit(1)
+          if failed:
+              print(f"::error::{failed} Android instrumentation test(s) failed.")
+              raise SystemExit(1)
+          if total == skipped:
+              print("::error::All Android instrumentation test cases were skipped; no tests actually ran.")
+              raise SystemExit(1)
+          expected_android_cases = 37  # Source-derived @Test inventory for the pinned FINCORE candidate.
+          if total != expected_android_cases:
+              print(f"::error::Expected all {expected_android_cases} Android instrumentation cases, but JUnit reported {total}.")
+              raise SystemExit(1)
+          if skipped:
+              print(f"::error::{skipped} Android instrumentation case(s) were skipped; full-suite verification requires zero skips.")
+              raise SystemExit(1)
+          missing_migration_cases = sorted(required_migration_cases - observed_migration_cases)
+          if missing_migration_cases:
+              print("::error::Required Room migration instrumentation cases were not reported:")
+              for name in missing_migration_cases:
+                  print(f"  MISSING_MIGRATION_TEST {name}")
+              raise SystemExit(1)
+          if skipped_migration_cases:
+              print("::error::Required Room migration instrumentation cases were skipped:")
+              for name in sorted(skipped_migration_cases):
+                  print(f"  SKIPPED_MIGRATION_TEST {name}")
+              raise SystemExit(1)
+          PY
+
+      - name: Remove private checkout and source-bearing build state
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          rm -rf "$GITHUB_WORKSPACE/private-source"
+          rm -rf "$HOME/.gradle/caches" "$HOME/.gradle/daemon" "$HOME/.gradle/native" "$HOME/.gradle/notifications" "$HOME/.gradle/wrapper"
+ "$trigger")"
           if [ "$count" -ne 1 ]; then
             echo "::error::Trigger file contains an ambiguous source pin."
             exit 1
