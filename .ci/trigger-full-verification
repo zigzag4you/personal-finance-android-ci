@@ -1,30 +1,8 @@
-Run full FINCORE verification against private source c1e158fc345ab1848229526500d3b07545542f1b.
-Workflow commit: 53a4d86f7711c5d3802e405c045a0c6428b86f25.
-Instrumentation runner script commit: 053b7c4210624f698c83cdea1327ce38a76f48bf.
-The private source pins published Android Gradle Plugin 9.5.1 and AndroidJUnitRunner timeout_msec=300000.
-The CI workflow validates the source pin, checks out the exact private source, runs Quality Guardian, host compile/JVM/Lint/APK gates, enables KVM, and boots Google ATD API 35.
-The previous Run #38 (45970844926) proved:
-- Exact source checkout and Quality Guardian passed.
-- Host build and APK preflight passed: BUILD SUCCESSFUL in 3m50s.
-- JVM tests: 685 passed, 0 failed, 0 skipped.
-- Lint: 21 warnings, no lint gate failure.
-- KVM is readable and writable.
-- Google ATD API 35 booted in 20526 ms.
-- Android instrumentation did not start because android-emulator-runner executed each line of its multiline script separately via /usr/bin/sh; the for-loop was split, causing a shell syntax error before PackageManager preflight or app installation. This is a CI script invocation defect, not an app test failure.
-Fix: instrumentation logic now lives in .ci/run-android-instrumentation.sh and is invoked as one command through explicit bash from the emulator action.
-Expected Android inventory is 37 @Test methods across 9 androidTest source files. Require exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
-- FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree
-- FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree
-Private source must remain ephemeral; do not upload source-bearing artifacts.
-Keep Room v3. No merge or release.
-
-Run #39 (45971730171) reached a fully booted Google ATD API 35, passed PackageManager readiness, installed app and test APKs, and executed Android instrumentation. It reported 29 cases, 4 failures, 0 skipped, 25 passed; the source inventory expects 37. Two Room migration tests failed with AbstractMethodError in kotlinx.serialization.internal.GeneratedSerializer.typeParametersSerializers, and two test classes failed AndroidJUnit4 runner initialization. This is a runtime dependency/runner compatibility investigation, not a demonstrated SQL migration failure. The app source minSdk is 26 and Room remains v3. New workflow step runs dependencyInsight for kotlinx-serialization-core/json on debugRuntimeClasspath and debugAndroidTestRuntimeClasspath; failure summaries now retain 48 stack lines. Do not change minSdk or Room schema based on this symptom alone.
-Run #39 (45971730171) reached Android instrumentation but reported 29/37 cases: 25 passed, 4 failed, 0 skipped. Both Room migration tests raised kotlinx.serialization.internal.GeneratedSerializer.typeParametersSerializers AbstractMethodError; EncryptedDatabaseIntegrationTest and JournalPersistenceIntegrationTest had AndroidJUnit4 runner initialization errors.
-Run #40 (45974228190) reproduced the same Android summary. Its dependencyInsight identified the exact ABI conflict: Room 3.0.3 room3-migration-jvm brings kotlinx-serialization-json 1.8.1 and requests core 1.8.1, while androidx.lifecycle:lifecycle-viewmodel-savedstate-android 2.9.4 brings core/BOM 1.7.3; consistent resolution selected core 1.7.3 alongside JSON 1.8.1.
-Private source fix: add kotlinx-serialization-bom 1.8.1 to app implementation (commits 605761b and b5a161a). CI now fails before emulator startup unless serialization core is 1.8.1 and JSON is 1.8.1 wherever present; Android failure summaries retain up to 48 stack lines.
-The two AndroidJUnit4 runner initialization errors remain separately unresolved; inspect their full stack traces in the next run. Require exactly 37 executed Android cases, zero skipped/failed, and both Room migration tests passing. Room v3 only; no merge/release; private source must remain ephemeral.
-Run #44 (45975976344) checked out exact private source f603c5b6ad40878543898ec398c20de36ea9045c. Quality Guardian, host build, JVM 685/685, Lint and APK gates passed. DependencyInsight selected kotlinx-serialization-core 1.8.1, confirming the app BOM fix resolved the previous core/json version mismatch. The pre-emulator gate then rejected this valid version because it used grep -q (BRE) with ERE grouping syntax; no emulator or Android instrumentation ran.
-Fix: public workflow commit 682f9d9701a98a69a97857baf7ff41a4321ade4c changes both version assertions to grep -Eq. Workflow was re-fetched and structurally checked: one jobs block, one KVM step, one cleanup step, no trailing content. Re-run the same exact source to validate the corrected gate, then proceed to Android instrumentation. Keep full 48-line failure traces; Room v3; no merge/release.
-Run #45 (45976683104) validated serialization alignment: core/json 1.8.1 gate passed, KVM and emulator boot passed, PackageManager and APK installation succeeded. Both required Room migration tests passed. Android JUnit reported 29 total, 27 passed, 2 failed, 0 skipped because EncryptedDatabaseIntegrationTest's one method and all nine JournalPersistenceIntegrationTest methods were rejected by JUnit InvalidTestClassError (non-void signatures).
-Private source fix: explicit ': Unit' added to all 25 expression-bodied Android @Test methods across seven files. Quality Guardian now checks Android @Test return types and includes synthetic positive/negative fixtures; its suite is now 19 tests (quality guardian commits 20e4655, 517bf57; tests 48dfe47, c28d566).
-Public CI also now runs .ci/test_workflow_guardrails.py immediately after public checkout (script commit cf1653f; workflow commit 53a4d86). It checks workflow structure/order/privacy and exercises the exact version predicate with positive/negative cases. Require exactly 37 Android tests, zero failures/skips, both Room migrations passing, and no InvalidTestClassError. Keep Room v3; no merge/release; private source remains ephemeral.
+Run full FINCORE verification against private source 466dff194821eebc1fb35a69f31733fbc39f5f03.
+Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
+Source changes after Run #46:
+- Dashboard Room snapshot loading moved to Dispatchers.IO and CPU projection to Dispatchers.Default; cancellation is propagated.
+- Forecast and stress-simulation UI coroutines now rethrow CancellationException instead of swallowing structured cancellation.
+- FIN-Q-0025 and FIN-Q-0026 record the defects, corrections and pending regression verification.
+Expected gates: Quality Guardian, 685 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration cases passing.
+Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
