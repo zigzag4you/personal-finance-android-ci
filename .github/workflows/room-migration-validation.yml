@@ -173,7 +173,17 @@ jobs:
             set -eu
             adb devices
             adb -s "$ANDROID_SERIAL" shell getprop ro.build.version.sdk
+            set +e
             bash ./gradlew :app:connectedDebugAndroidTest --no-daemon --no-build-cache --stacktrace --info
+            gradle_status=$?
+            set -e
+            echo "Android instrumentation Gradle exit code: $gradle_status"
+            echo "Bounded emulator system diagnostics before emulator shutdown:"
+            adb devices -l || true
+            adb -s "$ANDROID_SERIAL" logcat -d -b crash -b system -t 2500 2>&1 | grep -Ei 'FATAL EXCEPTION|system_server|PackageManager|Broken pipe|OutOfMemory|low memory|lmkd|watchdog|INSTALL_FAILED|install.*failed|dex2oat' | tail -n 160 || true
+            adb -s "$ANDROID_SERIAL" shell dumpsys meminfo 2>&1 | sed -n '1,80p' || true
+            adb -s "$ANDROID_SERIAL" shell df -h /data 2>&1 || true
+            exit "$gradle_status"
 
       - name: Summarize Android instrumentation failures
         if: always()
