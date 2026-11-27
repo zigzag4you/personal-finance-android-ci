@@ -1,5 +1,18 @@
-Run full FINCORE verification against private source 1235d466ad085d7e64823822b06c36c752d64ed6.
-Workflow pin commit: 533801ac2cbcb9c21934b818d9c3e916dafa6008.
-Run #25 (45958376919) tested this exact source: Quality Guardian 16/16, JVM 685/685, Lint and both APK assemblies passed. Android instrumentation did NOT execute: APK installation failed with "Failure calling service package: Broken pipe (32)" and JUnit summary was total=0. Gradle incorrectly returned BUILD SUCCESSFUL and the summarizer exited 0, producing a false-green overall run.
-Corrective CI change: Android summarizer now fails closed on missing/invalid reports, zero test cases, any failed tests, or all tests skipped. No Android/Room migration pass is claimed.
-Repeat full host gates and Google ATD instrumentation on the exact source SHA above. Verify checkout SHA from logs. Require nonzero executed Android test cases and zero failures before treating the run as successful. Keep private source ephemeral; do not upload source-bearing artifacts.
+Run full FINCORE verification against private source 48367ced1ec02a3744a637482ae5f03bf3d8a2b7.
+Workflow commit: c679d72bd089f812f301ac1b2db5a67ffca88e82.
+This source adds a five-minute per-test timeout for AndroidJUnit4 instrumentation.
+Run #27 (45960291940) remains active on the earlier workflow tree and source 1235d466; it has passed all host gates but Android instrumentation has not yet returned a result.
+Independent emulator health Run #1 (45964090247) passed:
+- KVM permissions enabled before emulator startup.
+- Emulator hardware acceleration detected (disable-linux-hw-accel=false).
+- Emulator cold boot completed in 20041 ms.
+- PackageManager binder found; cmd package listed 174 packages.
+- /data had 5.3 GB available.
+- ANDROID_EMULATOR_HEALTH=PASS.
+Run full host gates and Google ATD instrumentation on exact source SHA 48367ced1ec02a3744a637482ae5f03bf3d8a2b7. Verify checkout SHA from logs.
+Required Android result: exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
+- FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree
+- FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree
+The workflow now includes KVM enablement, PackageManager readiness preflight, pre/post emulator diagnostics, and fail-closed JUnit validation.
+Keep private source ephemeral; do not upload source-bearing artifacts.
+Keep Room v3. No merge or release.
