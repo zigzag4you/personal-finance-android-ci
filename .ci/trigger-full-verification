@@ -1,10 +1,10 @@
-Run full FINCORE verification against private source 09eb792217d1fd026e127a75c8bee9cfd164cda1.
+Run full FINCORE verification against private source 7fcdd51ed2b5774309dc0ec6af3b3a6fb3a5ff97.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-Product increments: monthly expense-account insights and direct bank reconciliation entry.
-- Expense insights groups posted journal lines by actual EXPENSE account; compares selected and prior months; nets debits, credits and reversals; preserves negative net totals and native currency boundaries.
-- Corrected FIN-Q-0030 test expectation: a -2500 net expense remains visible in selected-month totals, per the contract. Run #53 showed 689/690 JVM passed; no Android instrumentation ran.
-- FIN-Q-0029: both BankReconciliationScreen coroutine handlers now rethrow CancellationException before catching Exception. Quality Guardian checks both pairs and rejects broad Throwable catches.
-- Quality Guardian inventory is now 23 tests; authored JVM inventory 690; Android instrumentation inventory 37.
-- Added direct home-screen bank reconciliation route. It remains preview-only and never clears or posts automatically.
+Product refinement after Run #54:
+- Finance home now places the financial dashboard first and groups six core workflows in a compact two-column tools card.
+- Expense insights shows relative percentage movement when the previous-month baseline is positive.
+- Currency sorting uses code plus fraction digits so different precision definitions sharing a code remain distinct in the UI.
+- Bank reconciliation route returns to the finance center with the correct localized back label.
+Prior verified baseline: Run #54 passed on 09eb792217d1fd026e127a75c8bee9cfd164cda1 (Guardian 23/23, JVM 690/690, Android 37/37; zero failures/skips; Lint/APKs/serialization/Room migrations passed).
 Require full build, Quality Guardian 23/23, exactly 690 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
 Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
