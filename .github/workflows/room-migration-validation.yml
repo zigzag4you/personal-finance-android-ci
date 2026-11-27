@@ -248,6 +248,13 @@ jobs:
           if total == skipped:
               print("::error::All Android instrumentation test cases were skipped; no tests actually ran.")
               raise SystemExit(1)
+          expected_android_cases = 37  # Source-derived @Test inventory for the pinned FINCORE candidate.
+          if total != expected_android_cases:
+              print(f"::error::Expected all {expected_android_cases} Android instrumentation cases, but JUnit reported {total}.")
+              raise SystemExit(1)
+          if skipped:
+              print(f"::error::{skipped} Android instrumentation case(s) were skipped; full-suite verification requires zero skips.")
+              raise SystemExit(1)
           missing_migration_cases = sorted(required_migration_cases - observed_migration_cases)
           if missing_migration_cases:
               print("::error::Required Room migration instrumentation cases were not reported:")
