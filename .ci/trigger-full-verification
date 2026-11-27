@@ -1,12 +1,12 @@
 Run full FINCORE verification against private source 266a35c165d092662e081f4ffd1f287a3aaac580.
-Workflow commit: b905bfd2d0d7321c2e5ada92ce48ba154454bdb4.
-This source includes AndroidJUnitRunner per-test timeout_msec=300000 and pins the published stable Android Gradle Plugin 9.5.1; AGP 9.5.3 was not published.
-The workflow validates and checks out the exact source SHA declared in this file. It does not hard-code an older source commit.
+Workflow commit: 41e26cdced1926573336e3ae533dffc1ec10faaa.
+The private source pins published stable Android Gradle Plugin 9.5.1 and includes AndroidJUnitRunner timeout_msec=300000.
+The workflow checks out public CI control files, validates exactly one 40-character private source SHA from this trigger, then checks out that exact private source SHA into private-source.
 The workflow enables KVM before emulator startup and does not force TCG globally; TCG is fallback only when /dev/kvm is unavailable.
-Previous evidence:
-- Run #27 (45960291940): Quality Guardian 16/16, JVM 685/685, Lint and APK builds passed; emulator lacked KVM, instrumentation launched but timed out after 35 minutes without JUnit.
-- Run #28 (45964360960): failed before emulator because AGP 9.5.3 could not be resolved; its workflow also checked out stale source 1235d466.
-- Independent emulator health Run #1 (45964090247): KVM/hardware acceleration passed; boot 20041 ms; PackageManager responsive; 174 packages; 5.3 GB free /data.
+Run #27 (45960291940) passed host gates but Android instrumentation timed out after 35 minutes without JUnit; the emulator lacked KVM.
+Run #28 (45964360960) failed before emulator because AGP 9.5.3 could not be resolved and used a stale hard-coded source SHA.
+Run #34 (45970342975) was created from the previous trigger but failed immediately with zero jobs/check runs; it is not app verification evidence.
+Independent emulator health Run #1 (45964090247) passed KVM/hardware acceleration, boot 20041 ms, PackageManager readiness, 174 packages and 5.3 GB free /data.
 Required Android result: exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
 - FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree
 - FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree
