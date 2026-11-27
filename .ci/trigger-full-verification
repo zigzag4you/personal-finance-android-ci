@@ -1,2 +1,3 @@
-Run full FINCORE verification against reviewed private source 8c11c8de43e350322bde69f4e7cb70a9b0988b31.
+Run full FINCORE verification against reviewed private source 4cbfb3f8a9702f1e11cc37dd465d8995d48e3a2f.
+Workflow pin commit: b50fd2a3793b360e892d2ca099384597e9baf6ab.
 Trigger mechanism: dedicated-path push.
