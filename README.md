@@ -52,3 +52,8 @@ Do not claim migration tests passed until the corrected run completes successful
 Run #25 (`45958376919`) checked out private source `1235d466ad085d7e64823822b06c36c752d64ed6`. Quality Guardian (16/16), JVM tests (685/685), Lint, and both APK assemblies passed. Android instrumentation did not execute: APK installation failed with ADB `Broken pipe (32)`, and the JUnit summary contained zero test cases. Gradle nevertheless returned success, so the green GitHub conclusion is an invalid verification result; no Android or Room migration pass is claimed.
 
 The full-verification workflow now fails closed on missing/invalid Android JUnit reports, zero executed cases, any failed case, or an all-skipped suite. Fix commit: `533801ac2cbcb9c21934b818d9c3e916dafa6008`. A retry was triggered against the same exact private source via signal commit `0f0091d944bbf54c1c39354dddb4d2b96c513501`; its run ID is not yet confirmed. The private checkout remains ephemeral and no source-bearing artifacts are uploaded.
+
+
+## Emulator failure diagnostics
+
+The latest workflow revision `1875484fae8d49a0b424aed5fcaf9ff3995cb731` also captures bounded crash/system logcat entries, emulator memory information, and `/data` disk capacity after the instrumentation command but before the emulator is shut down. This is diagnostic-only and does not publish source or raw test-report artifacts. The currently triggered retry remains pinned to workflow `533801ac2cbcb9c21934b818d9c3e916dafa6008`; this newer diagnostic revision is for a subsequent attempt if needed.
