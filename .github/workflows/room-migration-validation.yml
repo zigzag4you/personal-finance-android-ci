@@ -52,12 +52,12 @@ jobs:
         run: |
           set -euo pipefail
           trigger="ci-control/.ci/trigger-full-verification"
-          source_sha="$(sed -nE 's/^Run full FINCORE verification against private source ([0-9a-f]{40})\.$/\1/p' "$trigger")"
+          source_sha="$(sed -nE 's/^Run full FINCORE verification against private source ([0-9a-f]{40})[.]$/\1/p' "$trigger")"
           if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::Trigger file must contain exactly one valid pinned private source SHA."
             exit 1
           fi
-          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}\.
+          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}[.]$' "$trigger")"
           if [ "$count" -ne 1 ]; then
             echo "::error::Trigger file contains an ambiguous source pin."
             exit 1
