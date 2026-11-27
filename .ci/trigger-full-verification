@@ -1,15 +1,19 @@
 Run full FINCORE verification against private source 266a35c165d092662e081f4ffd1f287a3aaac580.
-Workflow commit: 562df2483b858cc20fc5b1f1736616003710ec7a.
-The private source pins published stable Android Gradle Plugin 9.5.1 and includes AndroidJUnitRunner timeout_msec=300000.
-The workflow is rebuilt from the last known valid CI baseline. It checks out public control files, reads the first trigger line, validates one 40-character hexadecimal source SHA with a trailing period, then checks out the exact private source SHA into private-source.
-KVM is enabled before emulator startup; TCG is fallback only if /dev/kvm is unavailable. No job-wide TCG forcing.
-Prior attempts:
-- Run #27 (45960291940): host gates passed; Android instrumentation timed out after 35 minutes without JUnit; KVM unavailable.
-- Run #28 (45964360960): failed before emulator because AGP 9.5.3 could not be resolved; workflow used stale hard-coded source SHA.
-- Runs #32–36 (including 45970342975, 45970588330, 45970611068): failed immediately with zero jobs/check runs after the first dynamic workflow edits; do not treat as app verification.
-- Independent emulator health Run #1 (45964090247): KVM/hardware acceleration passed; boot 20041 ms; PackageManager responsive; 174 packages; 5.3 GB free /data.
-Required Android result: exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
+Workflow commit: 7910612cae07092e430b06d325673dcabc9e8bfd.
+Instrumentation runner script commit: 053b7c4210624f698c83cdea1327ce38a76f48bf.
+The private source pins published Android Gradle Plugin 9.5.1 and AndroidJUnitRunner timeout_msec=300000.
+The CI workflow validates the source pin, checks out the exact private source, runs Quality Guardian, host compile/JVM/Lint/APK gates, enables KVM, and boots Google ATD API 35.
+The previous Run #38 (45970844926) proved:
+- Exact source checkout and Quality Guardian passed.
+- Host build and APK preflight passed: BUILD SUCCESSFUL in 3m50s.
+- JVM tests: 685 passed, 0 failed, 0 skipped.
+- Lint: 21 warnings, no lint gate failure.
+- KVM is readable and writable.
+- Google ATD API 35 booted in 20526 ms.
+- Android instrumentation did not start because android-emulator-runner executed each line of its multiline script separately via /usr/bin/sh; the for-loop was split, causing a shell syntax error before PackageManager preflight or app installation. This is a CI script invocation defect, not an app test failure.
+Fix: instrumentation logic now lives in .ci/run-android-instrumentation.sh and is invoked as one command through explicit bash from the emulator action.
+Expected Android inventory is 37 @Test methods across 9 androidTest source files. Require exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
 - FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree
 - FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree
-Keep private source ephemeral; do not upload source-bearing artifacts.
+Private source must remain ephemeral; do not upload source-bearing artifacts.
 Keep Room v3. No merge or release.
