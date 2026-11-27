@@ -57,8 +57,13 @@ jobs:
             echo "::error::Trigger file must contain exactly one valid pinned private source SHA."
             exit 1
           fi
-          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}\.
-
+          count="$(grep -Ec '^Run full FINCORE verification against private source [0-9a-f]{40}\\.$' "$trigger")"
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Trigger file contains an ambiguous source pin."
+            exit 1
+          fi
+          echo "Resolved private source SHA: $source_sha"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
       # The public CI runner executes deterministic quality checks against
       # the private checkout; only test output leaves this ephemeral workspace.
       - name: Run Quality Guardian checks
