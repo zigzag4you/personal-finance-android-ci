@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: zigzag4you/personal-finance-android
-          ref: b6b48eb3277bc44acb7dfcd18e9a12582e87affc
+          ref: 65047f7dbafb2c51c8771f51eee71c89c9a1c9fc
           token: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
           path: private-source
           persist-credentials: false
