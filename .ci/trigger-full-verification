@@ -1,9 +1,9 @@
-Run full FINCORE verification against private source d31191127237ec59bf917fa5f82b9d6ff5ac3556.
+Run full FINCORE verification against private source 279866cc5a81ae27147ce602eb70cca066e6d1f5.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-This candidate includes:
-- Dashboard and forecast dispatcher/cancellation corrections.
-- Ledger workspace: five coroutine handlers rethrow CancellationException before ordinary Exception handling; integer refresh state uses mutableIntStateOf.
-- FIN-Q-0028 adds a Quality Guardian source guard and two regression tests.
-- Guardian insertion syntax corrected after Run #49 failed before Gradle; no application tests ran in that attempt.
-- Require Quality Guardian 21 tests, 685 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
+FIN-Q-0028 candidate:
+- LedgerWorkspaceScreen preserves CancellationException in all five coroutine handlers and uses mutableIntStateOf for integer refresh state.
+- Quality Guardian cancellation guard and regression tests are included; Run #50 proved 21/21 Guardian tests pass.
+- Run #49 was a Guardian Python syntax error before Gradle and has been corrected.
+- Run #50 passed Guardian but Gradle could not resolve com.android.application plugin marker 9.5.1 from configured repositories; no app compilation or tests ran. Retry after that dependency-resolution failure without changing AGP.
+Require full build, 685 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
 Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
