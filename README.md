@@ -44,4 +44,4 @@ Do not claim migration tests passed until the corrected run completes successful
 
 ## Current verification status
 
-**Schema recovery: complete and committed to the private development branch. Migration validation: awaiting a user-dispatched run against private source SHA `80bc38d892f6eda48dba9595226ffbfe3edd82ee`.** The workflow runs on standard GitHub-hosted runners in this public repository, checks out the private source ephemerally with the read-only `PRIVATE_REPO_READ_TOKEN`, and removes the checkout/build state at the end. Quality Guardian tests are now included before Gradle. No run has been dispatched by the assistant.
+**Schema recovery: complete and committed to the private development branch. Migration validation: awaiting a user-dispatched run against private source SHA `c4d9b497e43f2a48546959278828008bed67fa43`.** The workflow runs on standard GitHub-hosted runners in this public repository, checks out the private source ephemerally with the read-only `PRIVATE_REPO_READ_TOKEN`, and removes the checkout/build state at the end. Quality Guardian tests are now included before Gradle. No run has been dispatched by the assistant.
