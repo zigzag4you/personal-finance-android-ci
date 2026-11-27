@@ -1,5 +1,6 @@
-Run full FINCORE verification against private source eed55dec093ae649955225599f022e8653db06a9.
-Workflow pin commit: 3b93b078114cff5a91e59a18db54da3c026e0b5c.
-Run #20 diagnostics: 685 JVM tests, 649 passed, 36 failed; root causes recorded as FIN-Q-0010 through FIN-Q-0012.
-Corrected source includes test-only org.json runtime, repaired invalid test fixtures, and reconciliation idempotency/capacity validation fix.
-Verify exact private checkout SHA; retain JUnit diagnostics before cleanup; do not publish private source or artifacts.
+Run full FINCORE verification against private source b6b48eb3277bc44acb7dfcd18e9a12582e87affc.
+Workflow pin commit: a7508559bb52afc150c1c2c5914c8c4248868ffb.
+Run #21: 684/685 JVM tests passed; sole failure FIN-Q-0013 was mappedAccountCount counting generated chart accounts instead of source mappings.
+Corrective batch: reader now counts explicit accountMappings and validates mapping/reconciliation cardinality; regression asserts 3 generated target accounts versus 1 mapped source account.
+Also includes ledger-backed CashFlowForecastRoute, home-screen navigation, and EN/AR return labels.
+Verify exact private checkout SHA; retain JUnit diagnostics; run host tests, lint, APK builds, and Android instrumentation including Room v1-v2-v3 migrations. Never publish private source or artifacts.
