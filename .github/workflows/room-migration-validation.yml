@@ -71,6 +71,40 @@ jobs:
           set -eu
           bash ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --no-build-cache --stacktrace
 
+      - name: Summarize host-side JUnit failures
+        if: always()
+        working-directory: private-source
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
+          if not reports:
+              print("No JVM JUnit XML reports were produced.")
+              raise SystemExit(0)
+          failures = 0
+          tests = 0
+          for report in reports:
+              root = ET.parse(report).getroot()
+              cases = root.findall(".//testcase")
+              tests += len(cases)
+              for case in cases:
+                  issue = case.find("failure")
+                  if issue is None:
+                      issue = case.find("error")
+                  if issue is not None:
+                      failures += 1
+                      message = (issue.attrib.get("message") or "").replace("\\n", " ")
+                      detail = (issue.text or "").strip().splitlines()
+                      print(f"FAILED {case.attrib.get('classname')}.{case.attrib.get('name')}: {message}")
+                      for line in detail[:5]:
+                          print(f"  {line[:400]}")
+          print(f"JVM_TEST_SUMMARY total={tests} failed={failures} passed={tests-failures}")
+          PY
+
       # Boot Google ATD only after all host-side gates pass. This suite needs
       # Android/Room instrumentation, not Play Store or a full interactive phone image.
       - name: Run Android instrumentation on Google ATD
