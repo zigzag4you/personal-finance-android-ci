@@ -1,6 +1,7 @@
-Run full FINCORE verification against private source 65047f7dbafb2c51c8771f51eee71c89c9a1c9fc.
-Workflow pin commit: 835d4846d70bcf48c63a934b8c3c518688097abc.
-Run #22: 684/685 JVM tests passed; sole failure was draftEntryCount expected 1 but the planner correctly generated two journals (opening balance plus imported transaction).
-FIN-Q-0014 corrects the test to expect two drafts while importedTransactionCount remains one; the field semantics are documented.
-Also includes FIN-Q-0013 source mapping count correction and ledger-backed CashFlowForecastRoute.
-Verify exact private checkout SHA; retain JUnit diagnostics; complete host tests, final lint, APK builds, Android instrumentation and Room v1-v2-v3 migrations. Do not expose private source or artifacts.
+Run full FINCORE verification against private source e42a0ffc9b3d1f4808416eef4cd0335d8596b4ec.
+Workflow pin commit: 6433ba677910e5511c27556b50932fff6bf382d2.
+Run #23: all 685/685 JVM tests passed and both APKs assembled; Lint failed on BigInteger.TWO requiring API 33 vs minSdk 26.
+FIN-Q-0015 replaces BigInteger.TWO with BigInteger.valueOf(2L).
+Candidate also strengthens v1-to-v3 Room migration preservation by seeding/checking accounts, journal entry/lines, audit events, accounting periods and period audit events.
+Use updated CI diagnostics: print 12 JUnit stack lines/skipped count and summarize all Lint SARIF findings.
+Verify exact checkout SHA, require Lint clean, then execute all Android instrumentation and Room v1-v2-v3 migrations. Do not expose private source or APK artifacts.
