@@ -1,11 +1,10 @@
-Run full FINCORE verification against private source 2e2f3b7398b028ebbeadc8ba3625e2cc95256008.
+Run full FINCORE verification against private source f2a993594de46c0eaed25a6e340405122562090e.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-Product increment: historical book net-worth trend.
-- Reconstructs monthly ASSET and LIABILITY normal balances from posted journal history; assets minus liabilities, including opposite-side postings and reversals.
-- Uses an explicit as-of date (current UI date), shows recorded coverage start, and excludes future entries. No market price or FX conversion is inferred.
-- Preserves currency code and fraction digits as distinct definitions; BigInteger intermediates fail closed on Long overflow.
-- Added bilingual screen/route and direct finance-home entry.
-- Added five JVM regression tests; authored inventory exactly 700 JVM and 37 Android.
-- Prior verified baseline: Run #56 passed 695 JVM / 37 Android and Guardian 23/23 on exact source 0b5e02bf15975b2dd8a3c9009b1dc7c509a760cb.
-Require full build, Quality Guardian 23/23, exactly 700 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
-Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
+Product increment: configurable workspace, capability and settings domain foundation.
+- Added isolated Personal, Family, Project and Small Business workspace ownership types with explicit consent-based grants and role authorization.
+- Added capability catalog validation and activation planning with dependency confirmation, mandatory integrity-kernel protection, dependent-module disable confirmation, and no data deletion.
+- Added typed settings definitions, value validation, supported-scope enforcement, deterministic account/module/workspace/global precedence and explicit default provenance.
+- Added 21 JVM regression tests. Authored inventory is exactly 721 JVM and 37 Android.
+- Prior verified baseline: Run #57 passed 700 JVM / 37 Android and Guardian 23/23 on exact source 2e2f3b7398b028ebbeadc8ba3625e2cc95256008.
+Require full build, Quality Guardian 23/23, exactly 721 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
+Room remains v3. This change adds no Room entities, migration or backup payload. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
