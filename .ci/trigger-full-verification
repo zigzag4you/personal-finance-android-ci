@@ -1,5 +1,5 @@
-Run full FINCORE verification against private source 80bc38d892f6eda48dba9595226ffbfe3edd82ee.
-Workflow pin commit: 8cc26dc444091758d10e42e2e464672e76a3d622.
-Run #25 (45958376919) tested older source 1235d466ad085d7e64823822b06c36c752d64ed6: Quality Guardian 16/16, JVM 685/685, Lint and both APK assemblies passed. Android instrumentation did NOT execute: APK installation failed with "Failure calling service package: Broken pipe (32)" and JUnit summary was total=0. Gradle incorrectly returned BUILD SUCCESSFUL and the summarizer exited 0, producing a false-green overall run.
+Run full FINCORE verification against private source 1235d466ad085d7e64823822b06c36c752d64ed6.
+Workflow pin commit: 533801ac2cbcb9c21934b818d9c3e916dafa6008.
+Run #25 (45958376919) tested this exact source: Quality Guardian 16/16, JVM 685/685, Lint and both APK assemblies passed. Android instrumentation did NOT execute: APK installation failed with "Failure calling service package: Broken pipe (32)" and JUnit summary was total=0. Gradle incorrectly returned BUILD SUCCESSFUL and the summarizer exited 0, producing a false-green overall run.
 Corrective CI change: Android summarizer now fails closed on missing/invalid reports, zero test cases, any failed tests, or all tests skipped. No Android/Room migration pass is claimed.
-Run full host gates and Google ATD instrumentation on the exact source SHA above. Verify checkout SHA from logs. Require nonzero executed Android test cases and zero failures before treating the run as successful. Keep private source ephemeral; do not upload source-bearing artifacts.
+Repeat full host gates and Google ATD instrumentation on the exact source SHA above. Verify checkout SHA from logs. Require nonzero executed Android test cases and zero failures before treating the run as successful. Keep private source ephemeral; do not upload source-bearing artifacts.
