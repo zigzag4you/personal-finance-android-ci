@@ -23,7 +23,7 @@ The workflow checks out only the fixed historical revisions, runs the configured
 
 ## Room migration validation workflow
 
-The manual-only workflow at `.github/workflows/room-migration-validation.yml` checks out the exact private app commit containing all three snapshots and runs `FinanceDatabaseMigrationIntegrationTest` on an Android emulator. It covers v1→v2→v3 data preservation and the v2→v3 conversion-stage uniqueness constraint.
+The manual-only workflow at `.github/workflows/room-migration-validation.yml` checks out the exact private app commit containing all three snapshots, runs the Quality Guardian Python unit suite and repository quality-profile/register validation, then runs the host-side Kotlin unit tests, lint, APK builds, and `FinanceDatabaseMigrationIntegrationTest` on an Android emulator. It covers v1→v2→v3 data preservation and the v2→v3 conversion-stage uniqueness constraint.
 
 - Run `45815632959` failed before tests because the initial emulator profile identifier was invalid (`Pixel_2`).
 - Run `45815670625` used the same initial profile and also failed during emulator setup.
@@ -44,4 +44,4 @@ Do not claim migration tests passed until the corrected run completes successful
 
 ## Current verification status
 
-**Schema recovery: complete and committed to the private development branch. Migration validation: in progress.** The first step in both workflows verified that `PRIVATE_REPO_READ_TOKEN` is available without revealing its value. The full application build and the complete unit/instrumentation test inventory have not yet been run.
+**Schema recovery: complete and committed to the private development branch. Migration validation: awaiting a user-dispatched run against private source SHA `80bc38d892f6eda48dba9595226ffbfe3edd82ee`.** The workflow runs on standard GitHub-hosted runners in this public repository, checks out the private source ephemerally with the read-only `PRIVATE_REPO_READ_TOKEN`, and removes the checkout/build state at the end. Quality Guardian tests are now included before Gradle. No run has been dispatched by the assistant.
