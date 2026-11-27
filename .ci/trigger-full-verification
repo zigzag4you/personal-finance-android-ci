@@ -1,3 +1,5 @@
-Run full FINCORE verification against private source 5b0fe5e7602f9197d683a3450f85408f3f498616.
-Workflow pin commit: 54caaaab3071bd139c9d92cd9050a012e0111e9f.
-JUnit diagnostics are retained in logs before cleanup; duplicate Gradle test dependency guard and helper import correction included.
+Run full FINCORE verification against private source eed55dec093ae649955225599f022e8653db06a9.
+Workflow pin commit: 3b93b078114cff5a91e59a18db54da3c026e0b5c.
+Run #20 diagnostics: 685 JVM tests, 649 passed, 36 failed; root causes recorded as FIN-Q-0010 through FIN-Q-0012.
+Corrected source includes test-only org.json runtime, repaired invalid test fixtures, and reconciliation idempotency/capacity validation fix.
+Verify exact private checkout SHA; retain JUnit diagnostics before cleanup; do not publish private source or artifacts.
