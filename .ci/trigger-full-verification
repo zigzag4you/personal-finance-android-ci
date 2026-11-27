@@ -1,3 +1,3 @@
-Run full FINCORE verification against private source f3f60210bc3109dee6ebdd35684f7694e851abe6.
-Workflow pin commit: 2eb88c98fedb91c329432c3515c3dd61a0c93c11.
-Includes JUnit failure summarizer before private-source cleanup and duplicate Gradle test dependency guard.
+Run full FINCORE verification against private source 5b0fe5e7602f9197d683a3450f85408f3f498616.
+Workflow pin commit: 54caaaab3071bd139c9d92cd9050a012e0111e9f.
+JUnit diagnostics are retained in logs before cleanup; duplicate Gradle test dependency guard and helper import correction included.
