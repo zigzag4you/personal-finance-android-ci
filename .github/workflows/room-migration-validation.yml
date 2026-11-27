@@ -199,8 +199,8 @@ jobs:
           for configuration in debugRuntimeClasspath debugAndroidTestRuntimeClasspath; do
             for module in kotlinx-serialization-core kotlinx-serialization-json; do
               report="$(bash ./gradlew :app:dependencyInsight --dependency "$module" --configuration "$configuration" --no-daemon --console=plain)"
-              printf '%s\\n' "$report"
-              selected="$(printf '%s\\n' "$report" | grep -m1 -E '^org\\.jetbrains\\.kotlinx:kotlinx-serialization-(core|json):[0-9]')" || true
+              printf '%s\n' "$report"
+              selected="$(printf '%s\n' "$report" | grep -m1 -E '^org[.]jetbrains[.]kotlinx:kotlinx-serialization-(core|json):[0-9]')" || true
               if [ "$module" = "kotlinx-serialization-core" ] && ! printf '%s' "$selected" | grep -q ':1\\.8\\.1
 
       # GitHub-hosted Ubuntu runners may expose /dev/kvm without granting
