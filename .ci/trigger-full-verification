@@ -1,8 +1,10 @@
-Run full FINCORE verification against private source 466dff194821eebc1fb35a69f31733fbc39f5f03.
+Run full FINCORE verification against private source 07237a5af97f55a7a2b744d3d23183fe4fed1754.
 Workflow commit: e027609411472549933ac5c53ca438a7283b2555.
-Source changes after Run #46:
-- Dashboard Room snapshot loading moved to Dispatchers.IO and CPU projection to Dispatchers.Default; cancellation is propagated.
-- Forecast and stress-simulation UI coroutines now rethrow CancellationException instead of swallowing structured cancellation.
-- FIN-Q-0025 and FIN-Q-0026 record the defects, corrections and pending regression verification.
-Expected gates: Quality Guardian, 685 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration cases passing.
+This candidate includes:
+- Dashboard Room snapshot loading on Dispatchers.IO and dashboard projection on Dispatchers.Default.
+- Forecast and stress-simulation coroutine cancellation propagation.
+- FIN-Q-0025 and FIN-Q-0026 source fixes.
+- Synchronized machine-readable and Markdown quality registers with 27 exact IDs, no duplicates, and required VERIFIED command/source/result evidence.
+- FIN-Q-0027 records the Run #47 quality-register guard failure and its correction.
+Require Quality Guardian, 685 JVM tests, Lint, APK assemblies, serialization alignment, exactly 37 Android tests with zero failures/skips, and both Room migration tests passing.
 Room remains v3. Private source remains ephemeral; do not upload source-bearing artifacts. No merge, release or publication.
