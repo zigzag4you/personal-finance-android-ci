@@ -1,6 +1,6 @@
-Run full FINCORE verification against private source b6b48eb3277bc44acb7dfcd18e9a12582e87affc.
-Workflow pin commit: a7508559bb52afc150c1c2c5914c8c4248868ffb.
-Run #21: 684/685 JVM tests passed; sole failure FIN-Q-0013 was mappedAccountCount counting generated chart accounts instead of source mappings.
-Corrective batch: reader now counts explicit accountMappings and validates mapping/reconciliation cardinality; regression asserts 3 generated target accounts versus 1 mapped source account.
-Also includes ledger-backed CashFlowForecastRoute, home-screen navigation, and EN/AR return labels.
-Verify exact private checkout SHA; retain JUnit diagnostics; run host tests, lint, APK builds, and Android instrumentation including Room v1-v2-v3 migrations. Never publish private source or artifacts.
+Run full FINCORE verification against private source 65047f7dbafb2c51c8771f51eee71c89c9a1c9fc.
+Workflow pin commit: 835d4846d70bcf48c63a934b8c3c518688097abc.
+Run #22: 684/685 JVM tests passed; sole failure was draftEntryCount expected 1 but the planner correctly generated two journals (opening balance plus imported transaction).
+FIN-Q-0014 corrects the test to expect two drafts while importedTransactionCount remains one; the field semantics are documented.
+Also includes FIN-Q-0013 source mapping count correction and ledger-backed CashFlowForecastRoute.
+Verify exact private checkout SHA; retain JUnit diagnostics; complete host tests, final lint, APK builds, Android instrumentation and Room v1-v2-v3 migrations. Do not expose private source or artifacts.
