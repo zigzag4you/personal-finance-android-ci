@@ -1,4 +1,4 @@
-Run full FINCORE verification against reviewed private source d99abb2c0fb379ddba2494d18e1e799e39743207.
-Workflow pin commit: da00effd04b8380594962a378365bda4380bd643.
+Run full FINCORE verification against reviewed private source fe42ccd6272e0fdd9a4d583a467816dd6db6b8ee.
+Workflow pin commit: 41821537896df8009ae4a4778eb62a2364cf2a54.
 Trigger mechanism: dedicated-path push.
-Quality Guardian includes duplicate Kotlin property declaration guard (FIN-Q-0007).
+Quality Guardian includes duplicate Kotlin property declaration guard (FIN-Q-0007); its regression fixtures use real newlines.
