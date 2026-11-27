@@ -86,12 +86,15 @@ jobs:
               print("No JVM JUnit XML reports were produced.")
               raise SystemExit(0)
           failures = 0
+          skipped = 0
           tests = 0
           for report in reports:
               root = ET.parse(report).getroot()
               cases = root.findall(".//testcase")
               tests += len(cases)
               for case in cases:
+                  if case.find("skipped") is not None:
+                      skipped += 1
                   issue = case.find("failure")
                   if issue is None:
                       issue = case.find("error")
@@ -100,9 +103,9 @@ jobs:
                       message = (issue.attrib.get("message") or "").replace("\\n", " ")
                       detail = (issue.text or "").strip().splitlines()
                       print(f"FAILED {case.attrib.get('classname')}.{case.attrib.get('name')}: {message}")
-                      for line in detail[:5]:
+                      for line in detail[:12]:
                           print(f"  {line[:400]}")
-          print(f"JVM_TEST_SUMMARY total={tests} failed={failures} passed={tests-failures}")
+          print(f"JVM_TEST_SUMMARY total={tests} failed={failures} skipped={skipped} passed={tests-failures-skipped}")
           PY
 
       # Boot Google ATD only after all host-side gates pass. This suite needs
