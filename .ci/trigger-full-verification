@@ -1,4 +1,3 @@
-Run full FINCORE verification against reviewed private source fe42ccd6272e0fdd9a4d583a467816dd6db6b8ee.
-Workflow pin commit: 41821537896df8009ae4a4778eb62a2364cf2a54.
-Trigger mechanism: dedicated-path push.
-Quality Guardian includes duplicate Kotlin property declaration guard (FIN-Q-0007); its regression fixtures use real newlines.
+Run full FINCORE verification against private source f3f60210bc3109dee6ebdd35684f7694e851abe6.
+Workflow pin commit: 2eb88c98fedb91c329432c3515c3dd61a0c93c11.
+Includes JUnit failure summarizer before private-source cleanup and duplicate Gradle test dependency guard.
