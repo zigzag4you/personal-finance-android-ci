@@ -1,18 +1,14 @@
-Run full FINCORE verification against private source 48367ced1ec02a3744a637482ae5f03bf3d8a2b7.
-Workflow commit: c679d72bd089f812f301ac1b2db5a67ffca88e82.
-This source adds a five-minute per-test timeout for AndroidJUnit4 instrumentation.
-Run #27 (45960291940) remains active on the earlier workflow tree and source 1235d466; it has passed all host gates but Android instrumentation has not yet returned a result.
-Independent emulator health Run #1 (45964090247) passed:
-- KVM permissions enabled before emulator startup.
-- Emulator hardware acceleration detected (disable-linux-hw-accel=false).
-- Emulator cold boot completed in 20041 ms.
-- PackageManager binder found; cmd package listed 174 packages.
-- /data had 5.3 GB available.
-- ANDROID_EMULATOR_HEALTH=PASS.
-Run full host gates and Google ATD instrumentation on exact source SHA 48367ced1ec02a3744a637482ae5f03bf3d8a2b7. Verify checkout SHA from logs.
+Run full FINCORE verification against private source 266a35c165d092662e081f4ffd1f287a3aaac580.
+Workflow commit: ba19220a21c0ee7aa0072eb44c39ef32abfc874d.
+This source includes AndroidJUnitRunner per-test timeout_msec=300000 and pins the published Android Gradle Plugin 9.5.1 (9.5.3 was not published).
+The workflow now resolves the private source SHA from this trigger file instead of using a stale hard-coded SHA.
+The workflow no longer forces TCG globally; it enables KVM first and falls back to TCG only when /dev/kvm is not accessible.
+Previous evidence:
+- Run #27 (45960291940): host gates passed (Quality Guardian 16/16, JVM 685/685, Lint and both APK assemblies); Android instrumentation timed out after 35 minutes after launch, with no JUnit report. Its old workflow had no KVM setup and no per-test timeout.
+- Run #28 (45964360960): failed before emulator startup because AGP 9.5.3 could not be resolved; its workflow skipped KVM and Android steps after host failure.
+- Emulator health Run #1 (45964090247): KVM access and hardware acceleration passed; boot 20041 ms; PackageManager responsive; 174 packages; 5.3 GB free /data.
 Required Android result: exactly 37 JUnit cases, zero skipped, zero failures, and both Room migration cases executed:
 - FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree
 - FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree
-The workflow now includes KVM enablement, PackageManager readiness preflight, pre/post emulator diagnostics, and fail-closed JUnit validation.
 Keep private source ephemeral; do not upload source-bearing artifacts.
 Keep Room v3. No merge or release.
