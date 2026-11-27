@@ -202,6 +202,12 @@ jobs:
 
           total = failed = skipped = 0
           invalid_reports = 0
+          required_migration_cases = {
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionOneAccountingRowsSurviveMigrationToVersionThree",
+              "com.zigzag4you.personalfinance.persistence.room.FinanceDatabaseMigrationIntegrationTest.versionTwoLegacyArchiveSurvivesMigrationToVersionThree",
+          }
+          observed_migration_cases = set()
+          skipped_migration_cases = set()
           for report in reports:
               try:
                   root = ET.parse(report).getroot()
@@ -211,15 +217,19 @@ jobs:
                   continue
               for case in root.iter("testcase"):
                   total += 1
+                  name = case.attrib.get("classname", "") + "." + case.attrib.get("name", "")
+                  if name in required_migration_cases:
+                      observed_migration_cases.add(name)
                   skipped_node = case.find("skipped")
                   if skipped_node is not None:
                       skipped += 1
+                      if name in required_migration_cases:
+                          skipped_migration_cases.add(name)
                   failure = case.find("failure")
                   error = case.find("error")
                   issue = failure if failure is not None else error
                   if issue is not None:
                       failed += 1
-                      name = case.attrib.get("classname", "") + "." + case.attrib.get("name", "")
                       message = issue.attrib.get("message", "")
                       print(f"ANDROID_TEST_FAILURE {name}: {message[:400]}")
                       detail = (issue.text or "").splitlines()
@@ -237,6 +247,17 @@ jobs:
               raise SystemExit(1)
           if total == skipped:
               print("::error::All Android instrumentation test cases were skipped; no tests actually ran.")
+              raise SystemExit(1)
+          missing_migration_cases = sorted(required_migration_cases - observed_migration_cases)
+          if missing_migration_cases:
+              print("::error::Required Room migration instrumentation cases were not reported:")
+              for name in missing_migration_cases:
+                  print(f"  MISSING_MIGRATION_TEST {name}")
+              raise SystemExit(1)
+          if skipped_migration_cases:
+              print("::error::Required Room migration instrumentation cases were skipped:")
+              for name in sorted(skipped_migration_cases):
+                  print(f"  SKIPPED_MIGRATION_TEST {name}")
               raise SystemExit(1)
           PY
 
