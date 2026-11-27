@@ -45,3 +45,10 @@ Do not claim migration tests passed until the corrected run completes successful
 ## Current verification status
 
 **Schema recovery: complete and committed to the private development branch. Migration validation: awaiting a user-dispatched run against private source SHA `c4d9b497e43f2a48546959278828008bed67fa43`.** The workflow runs on standard GitHub-hosted runners in this public repository, checks out the private source ephemerally with the read-only `PRIVATE_REPO_READ_TOKEN`, and removes the checkout/build state at the end. Quality Guardian tests are now included before Gradle. No run has been dispatched by the assistant.
+
+
+## Latest full verification checkpoint — 2026-11-27
+
+Run #25 (`45958376919`) checked out private source `1235d466ad085d7e64823822b06c36c752d64ed6`. Quality Guardian (16/16), JVM tests (685/685), Lint, and both APK assemblies passed. Android instrumentation did not execute: APK installation failed with ADB `Broken pipe (32)`, and the JUnit summary contained zero test cases. Gradle nevertheless returned success, so the green GitHub conclusion is an invalid verification result; no Android or Room migration pass is claimed.
+
+The full-verification workflow now fails closed on missing/invalid Android JUnit reports, zero executed cases, any failed case, or an all-skipped suite. Fix commit: `533801ac2cbcb9c21934b818d9c3e916dafa6008`. A retry was triggered against the same exact private source via signal commit `0f0091d944bbf54c1c39354dddb4d2b96c513501`; its run ID is not yet confirmed. The private checkout remains ephemeral and no source-bearing artifacts are uploaded.
